@@ -2,6 +2,10 @@
 #define COLLIDE_FINE_H_
 
 #include "core/contacts.hpp"
+#include <assert.h>
+#include <cstdio>
+#include <cstdlib>
+#include <memory.h>
 
 namespace chaos {
 class IntersectionTests;
