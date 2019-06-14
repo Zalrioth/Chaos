@@ -2,7 +2,6 @@
 #ifndef PFGEN_HPP_
 #define PFGEN_HPP_
 
-#include "core/core.hpp"
 #include "core/particle.hpp"
 #include <vector>
 
@@ -53,6 +52,48 @@ class ParticleSpring : public ParticleForceGenerator {
 
 public:
     ParticleSpring(Particle* other, real springConstant, real restLength);
+    virtual void updateForce(Particle* particle, real duration);
+};
+
+class ParticleAnchoredSpring : public ParticleForceGenerator {
+protected:
+    Vector3* anchor;
+    real springConstant;
+    real restLength;
+
+public:
+    ParticleAnchoredSpring(Vector3* anchor, real springConstant, real restLength);
+    virtual void updateForce(Particle* particle, real duration);
+};
+
+class ParticleBungee : public ParticleForceGenerator {
+    Particle* other;
+    real springConstant;
+    real restLength;
+
+public:
+    ParticleBungee(Particle* other, real springConstant, real restLength);
+    virtual void updateForce(Particle* particle, real duration);
+};
+
+class ParticleBoyancy : public ParticleForceGenerator {
+    real maxDepth;
+    real volume;
+    real waterHeigh;
+    real liquidDensity;
+
+public:
+    ParticleBouyancy(real maxDepth, real volume, real waterHieght, real liquidDensity = 1000.0f);
+    virtual void updateForce(Particle* particle, real duration);
+};
+
+class ParticleFakeSpring : public ParticleForceGenerator {
+    Vector3* anchor;
+    real springConstant;
+    real damping;
+
+public:
+    ParticleFakeSpring(Vector3* anchor, real springConstant, real damping);
     virtual void updateForce(Particle* particle, real duration);
 };
 }

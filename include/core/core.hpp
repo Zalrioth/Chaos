@@ -3,7 +3,6 @@
 #define CORE_HPP_
 
 #include "core/precision.hpp"
-#include <math.h>
 
 namespace chaos {
 class Vector3 {
@@ -38,7 +37,7 @@ public:
 
     real magnitude() const
     {
-        return sqrt(x * x + y * y + z * z);
+        return real_sqrt(x * x + y * y + z * z);
     }
 
     real squareMagnitude() const
@@ -149,5 +148,6 @@ public:
         x = y = z = 0;
     }
 };
+}
 
 #endif // CORE_HPP_
