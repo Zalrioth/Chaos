@@ -1,9 +1,6 @@
 cmake_minimum_required(VERSION 3.12)
 project(Chaos VERSION 0.1.0)
 
-#https://stackoverflow.com/questions/24570916/add-external-libraries-to-cmakelist-txt-c
-#https://pybullet.org/Bullet/phpBB3/viewtopic.php?t=4947
-
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 14)
 
