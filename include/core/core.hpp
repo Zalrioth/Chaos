@@ -16,7 +16,7 @@ public:
     real z;
 
 private:
-    real pad;
+    //real pad;
 
 public:
     Vector3()

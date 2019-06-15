@@ -8,17 +8,15 @@
 namespace chaos {
 class Particle {
 protected:
+    real inverseMass;
+    real damping;
     Vector3 position;
     Vector3 velocity;
-    Vector3 acceleration;
-    real damping;
-    real inverseMass;
     Vector3 forceAccum;
+    Vector3 acceleration;
 
 public:
     void integrate(real duration);
-    void clearAccumulator();
-    void addForce(const Vector3& force);
     void setMass(const real mass);
     real getMass() const;
     void setInverseMass(const real inverseMass);
@@ -38,6 +36,8 @@ public:
     void setAcceleration(const real x, const real y, const real z);
     void getAcceleration(Vector3* acceleration) const;
     Vector3 getAcceleration() const;
+    void clearAccumulator();
+    void addForce(const Vector3& force);
 };
 }
 

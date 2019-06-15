@@ -51,7 +51,7 @@ public:
     unsigned positionIterationsUsed;
 
 private:
-    bool validSettings;
+    //bool validSettings;
 
 public:
     ContactResolver(unsigned iterations, real velocityEpsilon = (real)0.01, real positionEpsilon = (real)0.01);

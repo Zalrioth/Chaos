@@ -12,6 +12,7 @@ void Particle::integrate(real duration)
     position.addScaledVector(velocity, duration);
 
     Vector3 resultingAcc = acceleration;
+    resultingAcc.addScaledVector(forceAccum, inverseMass);
 
     velocity.addScaledVector(resultingAcc, duration);
 
@@ -28,11 +29,10 @@ void Particle::setMass(const real mass)
 
 real Particle::getMass() const
 {
-    if (inverseMass == 0) {
+    if (inverseMass == 0)
         return REAL_MAX;
-    } else {
+    else
         return ((real)1.0) / inverseMass;
-    }
 }
 
 void Particle::setInverseMass(const real inverseMass)
