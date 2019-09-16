@@ -1,12 +1,8 @@
 #pragma once
-#ifndef PRECISION_HPP_
-#define PRECISION_HPP_
+#ifndef PRECISION_H
+#define PRECISION_H
 
-#include <float.h>
-#include <math.h>
-
-namespace chaos {
-#if 0
+#if 1
 #define SINGLE_PRECISION
 typedef float real;
 #define REAL_MAX FLT_MAX
@@ -33,6 +29,5 @@ typedef double real;
 #define real_epsilon DBL_EPSILON
 #define R_PI 3.14159265358979
 #endif
-}
 
-#endif // PRECISION_HPP_
+#endif  // COMMON_H
