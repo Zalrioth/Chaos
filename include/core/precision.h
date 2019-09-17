@@ -2,6 +2,8 @@
 #ifndef PRECISION_H
 #define PRECISION_H
 
+#include <float.h>
+
 #if 1
 #define SINGLE_PRECISION
 typedef float real;
