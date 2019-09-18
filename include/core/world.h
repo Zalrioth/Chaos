@@ -1,10 +1,10 @@
 #pragma once
-#ifndef WORLD_H_
-#define WORLD_H_
+#ifndef WORLD_H
+#define WORLD_H
 
-#include <cstdlib>
-#include "core/body.hpp"
-#include "core/contacts.hpp"
+#include <stdlib.h>
+#include "core/body.h"
+#include "core/contacts.h"
 
 // TODO: Add this
 //real chaos::sleepEpsilon = ((real)0.3);
@@ -43,4 +43,4 @@ class World {
 };
 }  // namespace chaos
 
-#endif  // WORLD_H_
+#endif  // WORLD_H

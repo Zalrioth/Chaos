@@ -10,8 +10,8 @@
 typedef real vec3[3];
 
 //TODO: Probably define
-static inline void vec3_default(real* dest, real* source) {
-  memcpy(dest, source, sizeof(vec3));
+static inline real* vec3_default() {
+  return (vec3){0, 0, 0};
 }
 
 static inline void vec3_copy(real* dest, real* source) {
@@ -94,7 +94,7 @@ static inline bool vec3_greater_than_equal(real* v1, real* v2) {
   return v1[0] >= v2[0] && v1[1] >= v2[1] && v1[2] >= v2[2];
 }
 
-static inline real* vec3_invert(real* dest, real* v1) {
+static inline real* vec3_invert(real* v1) {
   return (vec3){-v1[0], -v1[1], -v1[2]};
 }
 

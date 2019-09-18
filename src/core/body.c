@@ -221,11 +221,11 @@ static inline real* rigid_body_get_direction_in_world_space(struct RigidBody* ri
   return mat4_transform_direction(rigid_body->transform_matrix, direction);
 }
 
-static inline real* rigid_body_set_velocity(struct RigidBody* rigid_body, real* velocity) {
+static inline void rigid_body_set_velocity(struct RigidBody* rigid_body, real* velocity) {
   vec3_copy(rigid_body->velocity, velocity);
 }
 
-static inline real* rigid_body_set_velocity_xyz(struct RigidBody* rigid_body, real x, real y, real z) {
+static inline void rigid_body_set_velocity_xyz(struct RigidBody* rigid_body, real x, real y, real z) {
   vec3_copy(rigid_body->velocity, (vec3){x, y, z});
 }
 
@@ -249,7 +249,7 @@ static inline real* rigid_body_get_rotation(struct RigidBody* rigid_body) {
   return rigid_body->rotation;
 }
 
-static inline real* rigid_body_add_rotation(struct RigidBody* rigid_body, real* delta_rotation) {
+static inline void rigid_body_add_rotation(struct RigidBody* rigid_body, real* delta_rotation) {
   vec3_copy(rigid_body->rotation, vec3_add(rigid_body->rotation, delta_rotation));
 }
 
@@ -271,8 +271,8 @@ static inline void rigid_body_set_can_sleep(struct RigidBody* rigid_body, bool c
     rigid_body_set_awake(rigid_body, true);
 }
 
-static inline void rigid_body_get_last_frame_acceleration(struct RigidBody* rigid_body) {
-  rigid_body->last_frame_acceleration;
+static inline real* rigid_body_get_last_frame_acceleration(struct RigidBody* rigid_body) {
+  return rigid_body->last_frame_acceleration;
 }
 
 static inline void rigid_body_clear_accumulators(struct RigidBody* rigid_body) {
