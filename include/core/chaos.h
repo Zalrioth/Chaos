@@ -30,7 +30,7 @@ static inline real* vec3_sub(real* v1, real* v2) {
   return (vec3){v1[0] - v2[0], v1[1] - v2[1], v1[2] - v2[2]};
 }
 
-static inline real* vec3_mul(real* v1, real scalar) {
+static inline real* vec3_mul_scalar(real* v1, real scalar) {
   return (vec3){v1[0] * scalar, v1[1] * scalar, v1[2] * scalar};
 }
 
@@ -174,7 +174,7 @@ static inline real* mat4_mul_mat4(real* m1, real* m2) {
 }
 
 // Transform
-static inline real* mat4_mul_vec3(real* m1, real* v1) {
+static inline real* mat4_transform(real* m1, real* v1) {
   return (vec3){v1[0] * m1[0] + v1[1] * m1[1] + v1[2] * m1[2] + m1[3],
                 v1[0] * m1[4] + v1[1] * m1[5] + v1[2] * m1[6] + m1[7],
                 v1[0] * m1[8] + v1[1] * m1[9] + v1[2] * m1[10] + m1[11]};
