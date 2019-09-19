@@ -7,7 +7,7 @@ static inline void contact_set_body_data(struct Contact* contact, struct RigidBo
   contact->restitution = restitution;
 }
 
-static inline void contacnt_match_awake_state(struct Contact* contact) {
+static inline void contact_match_awake_state(struct Contact* contact) {
   if (!contact->body[1])
     return;
 
@@ -227,7 +227,7 @@ static inline real* contact_calculate_friction_impulse(struct Contact* contact, 
   return (vec3){impulse_contact[0], impulse_contact[1], impulse_contact[0]};
 }
 
-void contact_apply_position_change(struct Contact* contact, vec3* linear_change, vec3* angular_change, real penetration) {
+static inline void contact_apply_position_change(struct Contact* contact, vec3* linear_change, vec3* angular_change, real penetration) {
   real angular_limit = (real)0.2f;
   real angular_move[2];
   real linear_move[2];
@@ -302,117 +302,113 @@ void contact_apply_position_change(struct Contact* contact, vec3* linear_change,
     }
 }
 
-ContactResolver::ContactResolver(unsigned iterations, real velocityEpsilon, real positionEpsilon) {
-  setIterations(iterations, iterations);
-  setEpsilon(velocityEpsilon, positionEpsilon);
+static inline void contact_resolver_init(struct ContactResolver* contact_resolver, unsigned int velocity_iterations, unsigned int position_iterations, real velocity_epsilon, real position_epsilon) {
+  contact_resolbver_set_iterations(contact_resolver, velocity_iterations, position_iterations);
+  contact_resolbver_set_epsilon(contact_resolver, velocity_epsilon, position_epsilon);
 }
 
-ContactResolver::ContactResolver(unsigned velocityIterations, unsigned positionIterations, real velocityEpsilon, real positionEpsilon) {
-  setIterations(velocityIterations);
-  setEpsilon(velocityEpsilon, positionEpsilon);
+static inline bool contact_resolver_is_valid(struct ContactResolver* contact_resolver) {
+  return (contact_resolver->velocity_iterations > 0) && (contact_resolver->position_iterations > 0) && (contact_resolver->velocity_epsilon >= 0.0f) && (contact_resolver->position_epsilon >= 0.0f);
 }
 
-void ContactResolver::setIterations(unsigned iterations) {
-  setIterations(iterations, iterations);
+static inline void contact_resolver_set_iterations(struct ContactResolver* contact_resolver, unsigned int velocity_iterations, unsigned int position_iterations) {
+  contact_resolver->velocity_iterations = velocity_iterations;
+  contact_resolver->position_iterations = position_iterations;
 }
 
-void ContactResolver::setIterations(unsigned velocityIterations, unsigned positionIterations) {
-  ContactResolver::velocityIterations = velocityIterations;
-  ContactResolver::positionIterations = positionIterations;
+static inline void contact_resolver_set_epsilon(struct ContactResolver* contact_resolver, real velocity_epsilon, real position_epsilon) {
+  contact_resolver->velocity_epsilon = velocity_epsilon;
+  contact_resolver->position_epsilon = position_epsilon;
 }
 
-void ContactResolver::setEpsilon(real velocityEpsilon, real positionEpsilon) {
-  ContactResolver::velocityEpsilon = velocityEpsilon;
-  ContactResolver::positionEpsilon = positionEpsilon;
-}
-
-void ContactResolver::resolveContacts(Contact* contacts, unsigned numContacts, real duration) {
-  if (numContacts == 0)
+static inline void contact_resolver_resolve_contacts(struct ContactResolver* contact_resolver, struct Contact* contacts, unsigned int num_contacts, real duration) {
+  if (num_contacts == 0)
     return;
-  if (!isValid())
+  if (!contact_resolver_is_valid(contact_resolver))
     return;
 
-  prepareContacts(contacts, numContacts, duration);
-  adjustPositions(contacts, numContacts, duration);
-  adjustVelocities(contacts, numContacts, duration);
+  contact_resolver_prepare_contacts(contact_resolver, contacts, num_contacts, duration);
+  contact_resolver_adjust_positions(contact_resolver, contacts, num_contacts, duration);
+  contact_resolver_adjust_velocities(contact_resolver, contacts, num_contacts, duration);
 }
 
-void ContactResolver::prepareContacts(Contact* contacts, unsigned numContacts, real duration) {
-  Contact* lastContact = contacts + numContacts;
-  for (Contact* contact = contacts; contact < lastContact; contact++) {
-    contact->calculateInternals(duration);
+static inline void contact_resolver_prepare_contacts(struct ContactResolver* contact_resolver, struct Contact* contacts, unsigned int num_contacts, real duration) {
+  struct Contact* last_contact = contacts + num_contacts;
+  for (struct Contact* contact = contacts; contact < last_contact; contact++) {
+    contact_calculate_internals(contact, duration);
   }
 }
 
-void ContactResolver::adjustVelocities(Contact* c, unsigned numContacts, real duration) {
-  Vector3 velocityChange[2], rotationChange[2];
-  Vector3 deltaVel;
+static inline void contact_resolver_adjust_velocities(struct ContactResolver* contact_resolver, struct Contact* contact, unsigned num_contacts, real duration) {
+  vec3 velocity_change[2], rotation_change[2];
+  vec3 delta_vel;
 
-  velocityIterationsUsed = 0;
-  while (velocityIterationsUsed < velocityIterations) {
-    real max = velocityEpsilon;
-    unsigned index = numContacts;
-    for (unsigned i = 0; i < numContacts; i++) {
-      if (c[i].desiredDeltaVelocity > max) {
-        max = c[i].desiredDeltaVelocity;
+  contact_resolver->velocity_iterations_used = 0;
+  while (contact_resolver->velocity_iterations_used < contact_resolver->velocity_iterations) {
+    real max = contact_resolver->velocity_epsilon;
+    unsigned index = num_contacts;
+    for (unsigned i = 0; i < num_contacts; i++) {
+      if (contact[i].desired_delta_velocity > max) {
+        max = contact[i].desired_delta_velocity;
         index = i;
       }
     }
-    if (index == numContacts)
+    if (index == num_contacts)
       break;
 
-    c[index].matchAwakeState();
-    c[index].applyVelocityChange(velocityChange, rotationChange);
+    contact_match_awake_state(&contact[index]);
+    contact_apply_velocity_change(&contact[index], velocity_change, rotation_change);
 
-    for (unsigned i = 0; i < numContacts; i++) {
-      for (unsigned b = 0; b < 2; b++)
-        if (c[i].body[b]) {
-          for (unsigned d = 0; d < 2; d++) {
-            if (c[i].body[b] == c[index].body[d]) {
-              deltaVel = velocityChange[d] + rotationChange[d].vectorProduct(c[i].relativeContactPosition[b]);
-              c[i].contactVelocity += c[i].contactToWorld.transformTranspose(deltaVel) * (b ? -1 : 1);
-              c[i].calculateDesiredDeltaVelocity(duration);
+    for (unsigned int i = 0; i < num_contacts; i++) {
+      for (unsigned int b = 0; b < 2; b++)
+        if (contact[i].body[b]) {
+          for (unsigned int d = 0; d < 2; d++) {
+            if (contact[i].body[b] == contact[index].body[d]) {
+              vec3_copy(delta_vel, vec3_add(velocity_change[d], vec3_cross_product(rotation_change[d], contact[i].relative_contact_position[b])));
+              // NOTE: Double check
+              vec3_copy(contact[i].contact_velocity, vec3_add(contact[i].contact_velocity, vec3_mul_scalar(mat3_transform_transpose(contact[i].contact_to_world, delta_vel), (b ? -1 : 1))));
+              contact_calculate_desired_delta_velocity(&contact[i], duration);
             }
           }
         }
     }
-    velocityIterationsUsed++;
+    contact_resolver->velocity_iterations_used++;
   }
 }
 
-void ContactResolver::adjustPositions(Contact* c, unsigned numContacts, real duration) {
-  unsigned i, index;
-  Vector3 linearChange[2], angularChange[2];
+static inline void contact_resolver_adjust_positions(struct ContactResolver* contact_resolver, struct Contact* contact, unsigned num_contacts, real duration) {
+  unsigned int i, index;
+  vec3 linear_change[2], angular_change[2];
   real max;
-  Vector3 deltaPosition;
+  vec3 delta_position;
 
-  positionIterationsUsed = 0;
-  while (positionIterationsUsed < positionIterations) {
-    max = positionEpsilon;
-    index = numContacts;
-    for (i = 0; i < numContacts; i++) {
-      if (c[i].penetration > max) {
-        max = c[i].penetration;
+  contact_resolver->position_iterations_used = 0;
+  while (contact_resolver->position_iterations_used < contact_resolver->position_iterations) {
+    max = contact_resolver->position_epsilon;
+    index = num_contacts;
+    for (i = 0; i < num_contacts; i++) {
+      if (contact[i].penetration > max) {
+        max = contact[i].penetration;
         index = i;
       }
     }
-    if (index == numContacts)
+    if (index == num_contacts)
       break;
 
-    c[index].matchAwakeState();
-    c[index].applyPositionChange(linearChange, angularChange, max);
+    contact_match_awake_state(&contact[index]);
+    contact_apply_position_change(&contact[index], linear_change, angular_change, max);
 
-    for (i = 0; i < numContacts; i++) {
-      for (unsigned b = 0; b < 2; b++)
-        if (c[i].body[b]) {
-          for (unsigned d = 0; d < 2; d++) {
-            if (c[i].body[b] == c[index].body[d]) {
-              deltaPosition = linearChange[d] + angularChange[d].vectorProduct(c[i].relativeContactPosition[b]);
-              c[i].penetration += deltaPosition.scalarProduct(c[i].contactNormal) * (b ? 1 : -1);
+    for (i = 0; i < num_contacts; i++) {
+      for (unsigned int b = 0; b < 2; b++)
+        if (contact[i].body[b]) {
+          for (unsigned int d = 0; d < 2; d++) {
+            if (contact[i].body[b] == contact[index].body[d]) {
+              vec3_copy(delta_position, vec3_add(linear_change[d], vec3_cross_product(angular_change[d], contact[i].relative_contact_position[b])));
+              contact[i].penetration += vec3_scalar_product(delta_position, contact[i].contact_normal) * (b ? 1 : -1);
             }
           }
         }
     }
-    positionIterationsUsed++;
+    contact_resolver->position_iterations_used++;
   }
 }

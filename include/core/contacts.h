@@ -16,32 +16,29 @@ struct Contact {
   vec3 contact_velocity;
   real desired_delta_velocity;
   vec3 relative_contact_position[2];
-  void setBodyData(RigidBody* one, RigidBody* two, real friction, real restitution);
-  void calculateInternals(real duration);
-  void swapBodies();
-  void matchAwakeState();
-  void calculateDesiredDeltaVelocity(real duration);
-  Vector3 calculateLocalVelocity(unsigned bodyIndex, real duration);
-  void calculateContactBasis();
-  void applyImpulse(const Vector3& impulse, RigidBody* body, Vector3* velocityChange, Vector3* rotationChange);
-  void applyVelocityChange(Vector3 velocityChange[2], Vector3 rotationChange[2]);
-  void applyPositionChange(Vector3 linearChange[2], Vector3 angularChange[2], real penetration);
-  Vector3 calculateFrictionlessImpulse(Matrix3* inverseInertiaTensor);
-  Vector3 calculateFrictionImpulse(Matrix3* inverseInertiaTensor);
 };
 
+static inline void contact_set_body_data(struct Contact* contact, struct RigidBody* one, struct RigidBody* two, real friction, real restitution);
+static inline void contact_match_awake_state(struct Contact* contact);
+static inline void contact_swap_bodies(struct Contact* contact);
+static inline void contact_calculate_contact_basis(struct Contact* contact);
+static inline real* contact_calculate_local_velocity(struct Contact* contact, unsigned int body_index, real duration);
+static inline void contact_calculate_desired_delta_velocity(struct Contact* contact, real duration);
+static inline contact_calculate_internals(struct Contact* contact, real duration);
+static inline void contact_apply_velocity_change(struct Contact* contact, vec3* velocity_change, vec3* rotation_change);
+static inline real* contact_calculate_frictionless_impulse(struct Contact* contact, mat3* inverse_inertia_tensor);
+static inline real* contact_calculate_friction_impulse(struct Contact* contact, mat3* inverse_inertia_tensor);
+static inline void contact_apply_position_change(struct Contact* contact, vec3* linear_change, vec3* angular_change, real penetration);
+
 struct ContactResolver {
-  unsigned velocityIterations;
-  unsigned positionIterations;
-  real velocityEpsilon;
-  real positionEpsilon;
-  unsigned velocityIterationsUsed;
-  unsigned positionIterationsUsed;
+  unsigned int velocity_iterations;
+  unsigned int position_iterations;
+  real velocity_epsilon;
+  real position_epsilon;
+  unsigned int velocity_iterations_used;
+  unsigned int position_iterations_used;
   ContactResolver(unsigned iterations, real velocityEpsilon = (real)0.01, real positionEpsilon = (real)0.01);
   ContactResolver(unsigned velocityIterations, unsigned positionIterations, real velocityEpsilon = (real)0.01, real positionEpsilon = (real)0.01);
-  bool isValid() {
-    return (velocityIterations > 0) && (positionIterations > 0) && (positionEpsilon >= 0.0f) && (positionEpsilon >= 0.0f);
-  }
   void setIterations(unsigned velocityIterations, unsigned positionIterations);
   void setIterations(unsigned iterations);
   void setEpsilon(real velocityEpsilon, real positionEpsilon);
