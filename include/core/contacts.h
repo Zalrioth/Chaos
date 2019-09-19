@@ -37,16 +37,16 @@ struct ContactResolver {
   real position_epsilon;
   unsigned int velocity_iterations_used;
   unsigned int position_iterations_used;
-  ContactResolver(unsigned iterations, real velocityEpsilon = (real)0.01, real positionEpsilon = (real)0.01);
-  ContactResolver(unsigned velocityIterations, unsigned positionIterations, real velocityEpsilon = (real)0.01, real positionEpsilon = (real)0.01);
-  void setIterations(unsigned velocityIterations, unsigned positionIterations);
-  void setIterations(unsigned iterations);
-  void setEpsilon(real velocityEpsilon, real positionEpsilon);
-  void resolveContacts(Contact* contactArray, unsigned numContacts, real duration);
-  void prepareContacts(Contact* contactArray, unsigned numContacts, real duration);
-  void adjustVelocities(Contact* contactArray, unsigned numContacts, real duration);
-  void adjustPositions(Contact* contacts, unsigned numContacts, real duration);
 };
+
+static inline void contact_resolver_init(struct ContactResolver* contact_resolver, unsigned int velocity_iterations, unsigned int position_iterations, real velocity_epsilon, real position_epsilon);
+static inline bool contact_resolver_is_valid(struct ContactResolver* contact_resolver);
+static inline void contact_resolver_set_iterations(struct ContactResolver* contact_resolver, unsigned int velocity_iterations, unsigned int position_iterations);
+static inline void contact_resolver_set_epsilon(struct ContactResolver* contact_resolver, real velocity_epsilon, real position_epsilon);
+static inline void contact_resolver_resolve_contacts(struct ContactResolver* contact_resolver, struct Contact* contacts, unsigned int num_contacts, real duration);
+static inline void contact_resolver_prepare_contacts(struct ContactResolver* contact_resolver, struct Contact* contacts, unsigned int num_contacts, real duration);
+static inline void contact_resolver_adjust_velocities(struct ContactResolver* contact_resolver, struct Contact* contact, unsigned num_contacts, real duration);
+static inline void contact_resolver_adjust_positions(struct ContactResolver* contact_resolver, struct Contact* contact, unsigned num_contacts, real duration);
 
 struct ContactGenerator {
   void (*add_contact)(struct Contact*, unsigned int);

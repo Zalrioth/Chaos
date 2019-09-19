@@ -16,18 +16,18 @@ static inline void contact_match_awake_state(struct Contact* contact) {
 
   if (body0_awake ^ body1_awake) {
     if (body0_awake)
-      body_set_awake(body[1], true);
+      body_set_awake(contact->body[1], true);
     else
-      body_set_awake(body[0], true);
+      body_set_awake(contact->body[0], true);
   }
 }
 
 static inline void contact_swap_bodies(struct Contact* contact) {
   vec3_copy(contact->contact_normal, vec3_invert(contact->contact_normal));
 
-  struct RigidBody* temp = body[0];
-  body[0] = body[1];
-  body[1] = temp;
+  struct RigidBody* temp = contact->body[0];
+  contact->body[0] = contact->body[1];
+  contact->body[1] = temp;
 }
 
 static inline void contact_calculate_contact_basis(struct Contact* contact) {
@@ -60,7 +60,7 @@ static inline void contact_calculate_contact_basis(struct Contact* contact) {
 }
 
 static inline real* contact_calculate_local_velocity(struct Contact* contact, unsigned int body_index, real duration) {
-  struct RigidBody* this_body = body[body_index];
+  struct RigidBody* this_body = contact->body[body_index];
 
   real* velocity;
   vec3_copy(velocity, vec3_cross_product(rigid_body_get_rotation(this_body), contact->relative_contact_position[body_index]));
@@ -82,10 +82,10 @@ static inline void contact_calculate_desired_delta_velocity(struct Contact* cont
   real velocity_from_acc = 0;
 
   if (rigid_body_get_is_awake(contact->body[0]))
-    velocity_from_acc += vec3_magnitude(vec3_mul(vec3_mul_scalar(rigid_body_get_last_frame_acceleration(body[0]), duration), contact->contact_normal));
+    velocity_from_acc += vec3_magnitude(vec3_mul(vec3_mul_scalar(rigid_body_get_last_frame_acceleration(contact->body[0]), duration), contact->contact_normal));
 
   if (contact->body[1] && rigid_body_get_is_awake(contact->body[1]))
-    velocity_from_acc -= vec3_magnitude(vec3_mul(vec3_mul_scalar(rigid_body_get_last_frame_acceleration(body[1]), duration), contact->contact_normal));
+    velocity_from_acc -= vec3_magnitude(vec3_mul(vec3_mul_scalar(rigid_body_get_last_frame_acceleration(contact->body[1]), duration), contact->contact_normal));
 
   real this_restitution = contact->restitution;
   if (real_abs(contact->contact_velocity[0]) < velocityLimit)
@@ -99,13 +99,13 @@ static inline contact_calculate_internals(struct Contact* contact, real duration
     contact_swap_bodies(contact);
 
   contact_calculate_contact_basis(contact);
-  vec3_copy(contact->relative_contact_position[0], vec3_sub(contact->contact_point, rigid_body_get_position(body[0])));
+  vec3_copy(contact->relative_contact_position[0], vec3_sub(contact->contact_point, rigid_body_get_position(contact->body[0])));
 
   if (contact->body[1])
-    vec3_copy(contact->relative_contact_position[1], vec3_sub(contact->contact_point, rigid_body_get_position(body[1])));
+    vec3_copy(contact->relative_contact_position[1], vec3_sub(contact->contact_point, rigid_body_get_position(contact->body[1])));
 
   vec3_copy(contact->contact_velocity, contact_calculate_local_velocity(contact, 0, duration));
-  if (body[1])
+  if (contact->body[1])
     vec3_copy(contact->contact_velocity, vec3_sub(contact->contact_velocity, contact_calculate_local_velocity(contact, 1, duration)));
 
   contact_calculate_desired_delta_velocity(contact, duration);
@@ -282,7 +282,7 @@ static inline void contact_apply_position_change(struct Contact* contact, vec3* 
         mat3 inverse_inertia_tensor;
         mat3_copy(inverse_inertia_tensor, rigid_body_get_inertia_tensor_world(contact->body[i]));
 
-        vec3_copy(angular_change[i], vec3_mul_scalar(mat3_transform(inverse_inertia_tensor, target_angular_direction), (angular_move[i] / angular_inertia[i]));
+        vec3_copy(angular_change[i], vec3_mul_scalar(mat3_transform(inverse_inertia_tensor, target_angular_direction), (angular_move[i] / angular_inertia[i])));
       }
 
       vec3_copy(linear_change[i], vec3_mul_scalar(contact->contact_normal, linear_move[i]));
