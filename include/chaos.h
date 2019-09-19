@@ -1,0 +1,8 @@
+#include "core/body.h"
+#include "core/collidefine.h"
+#include "core/contacts.h"
+#include "core/core.h"
+#include "core/fgen.h"
+#include "core/joints.h"
+#include "core/precision.h"
+#include "core/random.h"

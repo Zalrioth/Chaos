@@ -3,7 +3,7 @@
 #define BODY_H
 
 #include <memory.h>
-#include "core/chaos.h"
+#include "core/core.h"
 
 struct RigidBody {
   real inverse_mass;

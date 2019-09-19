@@ -7,6 +7,7 @@
 #include "core/contacts.h"
 
 // TODO: Add this
+//const static real velocityLimit = (real)0.25f;
 //real chaos::sleepEpsilon = ((real)0.3);
 //extern real sleepEpsilon;
 //void setSleepEpsilon(real value);

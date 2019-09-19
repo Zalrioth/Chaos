@@ -23,7 +23,7 @@ static inline void contacnt_match_awake_state(struct Contact* contact) {
 }
 
 static inline void contact_swap_bodies(struct Contact* contact) {
-  vec3_clone(contact->contact_normal, vec3_invert(contact->contact_normal));
+  vec3_copy(contact->contact_normal, vec3_invert(contact->contact_normal));
 
   struct RigidBody* temp = body[0];
   body[0] = body[1];
@@ -56,253 +56,258 @@ static inline void contact_calculate_contact_basis(struct Contact* contact) {
     contact_tangent[1][1] = -contact_normal[0] * contact_tangent[0][2];
     contact_tangent[1][2] = contact_normal[0] * contact_tangent[0][1];
   }
-  mat3_clone(contact->contact_to_world, mat3_set_components(contact_normal, contact_tangent[0], contact_tangent[1]));
+  mat3_copy(contact->contact_to_world, mat3_set_components(contact_normal, contact_tangent[0], contact_tangent[1]));
 }
 
 static inline real* contact_calculate_local_velocity(struct Contact* contact, unsigned int body_index, real duration) {
   struct RigidBody* this_body = body[body_index];
 
   real* velocity;
-  vec3_clone(velocity, vec3_cross(rigid_body_get_rotation(this_body), contact->relative_contact_position[body_index]));
-  vec3_clone(velocity, vec3_add(velocity, rigid_body_get_velocity(this_body)));
+  vec3_copy(velocity, vec3_cross_product(rigid_body_get_rotation(this_body), contact->relative_contact_position[body_index]));
+  vec3_copy(velocity, vec3_add(velocity, rigid_body_get_velocity(this_body)));
 
   vec3 contact_velocity;
-  vec3_clone(contact_velocity, mat3_transform_transpose(contact->contact_to_world, velocity));
+  vec3_copy(contact_velocity, mat3_transform_transpose(contact->contact_to_world, velocity));
 
   vec3 acc_velocity;
-  vec3_clone(acc_velocity, vec3_mul_scalar(rigid_body_get_last_frame_acceleration(this_body), duration));
-  vec3_clone(acc_velocity, mat3_transform_transpose(contact->contact_to_world, acc_velocity));
+  vec3_copy(acc_velocity, vec3_mul_scalar(rigid_body_get_last_frame_acceleration(this_body), duration));
+  vec3_copy(acc_velocity, mat3_transform_transpose(contact->contact_to_world, acc_velocity));
   acc_velocity[0] = 0;
 
-  vec3_clone(contact_velocity, vec3_add(contact_velocity, acc_velocity));
+  vec3_copy(contact_velocity, vec3_add(contact_velocity, acc_velocity));
   return contact_velocity;
 }
 
-void Contact::calculateDesiredDeltaVelocity(real duration) {
-  const static real velocityLimit = (real)0.25f;
-  real velocityFromAcc = 0;
+static inline void contact_calculate_desired_delta_velocity(struct Contact* contact, real duration) {
+  real velocity_from_acc = 0;
 
-  if (body[0]->getAwake())
-    velocityFromAcc += body[0]->getLastFrameAcceleration() * duration * contactNormal;
+  if (rigid_body_get_is_awake(contact->body[0]))
+    velocity_from_acc += vec3_magnitude(vec3_mul(vec3_mul_scalar(rigid_body_get_last_frame_acceleration(body[0]), duration), contact->contact_normal));
 
-  if (body[1] && body[1]->getAwake())
-    velocityFromAcc -= body[1]->getLastFrameAcceleration() * duration * contactNormal;
+  if (contact->body[1] && rigid_body_get_is_awake(contact->body[1]))
+    velocity_from_acc -= vec3_magnitude(vec3_mul(vec3_mul_scalar(rigid_body_get_last_frame_acceleration(body[1]), duration), contact->contact_normal));
 
-  real thisRestitution = restitution;
-  if (real_abs(contactVelocity.x) < velocityLimit)
-    thisRestitution = (real)0.0f;
+  real this_restitution = contact->restitution;
+  if (real_abs(contact->contact_velocity[0]) < velocityLimit)
+    this_restitution = (real)0.0f;
 
-  desiredDeltaVelocity = -contactVelocity.x - thisRestitution * (contactVelocity.x - velocityFromAcc);
+  contact->desired_delta_velocity = -contact->contact_velocity[0] - this_restitution * (contact->contact_velocity[0] - velocity_from_acc);
 }
 
-void Contact::calculateInternals(real duration) {
-  if (!body[0])
-    swapBodies();
-  assert(body[0]);
+static inline contact_calculate_internals(struct Contact* contact, real duration) {
+  if (!contact->body[0])
+    contact_swap_bodies(contact);
 
-  calculateContactBasis();
+  contact_calculate_contact_basis(contact);
+  vec3_copy(contact->relative_contact_position[0], vec3_sub(contact->contact_point, rigid_body_get_position(body[0])));
 
-  relativeContactPosition[0] = contactPoint - body[0]->getPosition();
+  if (contact->body[1])
+    vec3_copy(contact->relative_contact_position[1], vec3_sub(contact->contact_point, rigid_body_get_position(body[1])));
+
+  vec3_copy(contact->contact_velocity, contact_calculate_local_velocity(contact, 0, duration));
   if (body[1])
-    relativeContactPosition[1] = contactPoint - body[1]->getPosition();
+    vec3_copy(contact->contact_velocity, vec3_sub(contact->contact_velocity, contact_calculate_local_velocity(contact, 1, duration)));
 
-  contactVelocity = calculateLocalVelocity(0, duration);
-  if (body[1])
-    contactVelocity -= calculateLocalVelocity(1, duration);
-
-  calculateDesiredDeltaVelocity(duration);
+  contact_calculate_desired_delta_velocity(contact, duration);
 }
 
-void Contact::applyVelocityChange(Vector3 velocityChange[2], Vector3 rotationChange[2]) {
-  Matrix3 inverseInertiaTensor[2];
-  body[0]->getInverseInertiaTensorWorld(&inverseInertiaTensor[0]);
-  if (body[1])
-    body[1]->getInverseInertiaTensorWorld(&inverseInertiaTensor[1]);
+// NOTE: Watch out for this typedef pointer
+static inline void contact_apply_velocity_change(struct Contact* contact, vec3* velocity_change, vec3* rotation_change) {
+  mat3 inverse_inertia_tensor[2];
+  mat3_copy(inverse_inertia_tensor[0], rigid_body_get_inverse_inertia_tensor_world(contact->body[0]));
+  if (contact->body[1])
+    mat3_copy(inverse_inertia_tensor[1], rigid_body_get_inverse_inertia_tensor_world(contact->body[1]));
 
-  Vector3 impulseContact;
-
-  if (friction == (real)0.0)
-    impulseContact = calculateFrictionlessImpulse(inverseInertiaTensor);
+  vec3 impulse_contact;
+  if (contact->friction == (real)0.0)
+    vec3_copy(impulse_contact, contact_calculate_frictionless_impulse(contact, inverse_inertia_tensor));
   else
-    impulseContact = calculateFrictionImpulse(inverseInertiaTensor);
+    vec3_copy(impulse_contact, contact_calculate_friction_impulse(contact, inverse_inertia_tensor));
 
-  Vector3 impulse = contactToWorld.transform(impulseContact);
-  Vector3 impulsiveTorque = relativeContactPosition[0] % impulse;
-  rotationChange[0] = inverseInertiaTensor[0].transform(impulsiveTorque);
-  velocityChange[0].clear();
-  velocityChange[0].addScaledVector(impulse, body[0]->getInverseMass());
+  vec3 impulse;
+  vec3_copy(impulse, mat3_transform(contact->contact_to_world, impulse_contact));
 
-  body[0]->addVelocity(velocityChange[0]);
-  body[0]->addRotation(rotationChange[0]);
+  vec3 impulsive_torque;
+  vec3_copy(impulsive_torque, vec3_cross_product(contact->relative_contact_position[0], impulse));
 
-  if (body[1]) {
-    Vector3 impulsiveTorque = impulse % relativeContactPosition[1];
-    rotationChange[1] = inverseInertiaTensor[1].transform(impulsiveTorque);
-    velocityChange[1].clear();
-    velocityChange[1].addScaledVector(impulse, -body[1]->getInverseMass());
+  vec3_copy(rotation_change[0], mat3_transform(inverse_inertia_tensor[0], impulsive_torque));
+  vec3_clear(velocity_change[0]);
 
-    body[1]->addVelocity(velocityChange[1]);
-    body[1]->addRotation(rotationChange[1]);
+  vec3_copy(velocity_change[0], vec3_add_scaled_vector(velocity_change[0], impulse, rigid_body_get_inverse_mass(contact->body[0])));
+
+  rigid_body_add_velocity(contact->body[0], velocity_change[0]);
+  rigid_body_add_rotation(contact->body[0], rotation_change[0]);
+
+  if (contact->body[1]) {
+    vec3 impulsive_torque;
+    vec3_copy(impulsive_torque, vec3_cross_product(impulse, contact->relative_contact_position[1]));
+
+    vec3_copy(rotation_change[1], mat3_transform(inverse_inertia_tensor[1], impulsive_torque));
+    vec3_clear(velocity_change[1]);
+    vec3_clone(velocity_change[1], vec3_add_scaled_vector(velocity_change[1], impulse, -rigid_body_get_inverse_mass(contact->body[1])));
+
+    rigid_body_add_velocity(contact->body[1], velocity_change[1]);
+    rigid_body_add_rotation(contact->body[1], rotation_change[1]);
   }
 }
 
-inline Vector3 Contact::calculateFrictionlessImpulse(Matrix3* inverseInertiaTensor) {
-  Vector3 impulseContact;
-  Vector3 deltaVelWorld = relativeContactPosition[0] % contactNormal;
-  deltaVelWorld = inverseInertiaTensor[0].transform(deltaVelWorld);
-  deltaVelWorld = deltaVelWorld % relativeContactPosition[0];
-  real deltaVelocity = deltaVelWorld * contactNormal;
-  deltaVelocity += body[0]->getInverseMass();
+static inline real* contact_calculate_frictionless_impulse(struct Contact* contact, mat3* inverse_inertia_tensor) {
+  vec3 delta_vel_world;
+  vec3_copy(delta_vel_world, vec3_cross_product(contact->relative_contact_position[0], contact->contact_normal));
+  vec3_copy(delta_vel_world, mat3_transform(inverse_inertia_tensor[0], delta_vel_world));
+  vec3_copy(delta_vel_world, vec3_cross_product(delta_vel_world, contact->relative_contact_position[0]));
+  real delta_velocity = vec3_magnitude(vec3_component_product(delta_vel_world, contact->contact_normal));
+  delta_velocity += rigid_body_get_inverse_mass(contact->body[0]);
 
-  if (body[1]) {
-    Vector3 deltaVelWorld = relativeContactPosition[1] % contactNormal;
-    deltaVelWorld = inverseInertiaTensor[1].transform(deltaVelWorld);
-    deltaVelWorld = deltaVelWorld % relativeContactPosition[1];
-    deltaVelocity += deltaVelWorld * contactNormal;
-    deltaVelocity += body[1]->getInverseMass();
+  if (contact->body[1]) {
+    vec3 delta_vel_world_other;
+    vec3_copy(delta_vel_world_other, vec3_cross_product(contact->relative_contact_position[1], contact->contact_normal));
+    vec3_copy(delta_vel_world_other, mat3_transform(inverse_inertia_tensor[1], delta_vel_world_other));
+    vec3_copy(delta_vel_world_other, vec3_cross_product(delta_vel_world_other, contact->relative_contact_position[1]));
+    delta_velocity += vec3_magnitude(vec3_component_product(delta_vel_world_other, contact->contact_normal));
+    delta_velocity += rigid_body_get_inverse_mass(contact->body[1]);
   }
 
-  impulseContact.x = desiredDeltaVelocity / deltaVelocity;
-  impulseContact.y = 0;
-  impulseContact.z = 0;
-  return impulseContact;
+  return (vec3){contact->desired_delta_velocity / delta_velocity, 0, 0};
 }
 
-inline Vector3 Contact::calculateFrictionImpulse(Matrix3* inverseInertiaTensor) {
-  Vector3 impulseContact;
-  real inverseMass = body[0]->getInverseMass();
+static inline real* contact_calculate_friction_impulse(struct Contact* contact, mat3* inverse_inertia_tensor) {
+  vec3 impulse_contact;
+  real inverse_mass = rigid_body_get_inverse_mass(contact->body[0]);
 
-  Matrix3 impulseToTorque;
-  impulseToTorque.setSkewSymmetric(relativeContactPosition[0]);
+  mat3 impulse_to_torque;
+  mat3_set_skew_symmetric(impulse_to_torque, contact->relative_contact_position[0]);
 
-  Matrix3 deltaVelWorld = impulseToTorque;
-  deltaVelWorld *= inverseInertiaTensor[0];
-  deltaVelWorld *= impulseToTorque;
-  deltaVelWorld *= -1;
+  mat3 delta_vel_world;
+  mat3_copy(delta_vel_world, impulse_to_torque);
+  mat3_copy(delta_vel_world, mat3_mul_mat3(delta_vel_world, inverse_inertia_tensor[0]));
+  mat3_copy(delta_vel_world, mat3_mul_mat3(delta_vel_world, impulse_to_torque));
+  mat3_copy(delta_vel_world, mat3_mul_scalar(delta_vel_world, -1));
 
-  if (body[1]) {
-    impulseToTorque.setSkewSymmetric(relativeContactPosition[1]);
+  if (contact->body[1]) {
+    mat3_set_skew_symmetric(impulse_to_torque, contact->relative_contact_position[1]);
 
-    Matrix3 deltaVelWorld2 = impulseToTorque;
-    deltaVelWorld2 *= inverseInertiaTensor[1];
-    deltaVelWorld2 *= impulseToTorque;
-    deltaVelWorld2 *= -1;
+    mat3 delta_vel_world_other;
+    mat3_copy(delta_vel_world_other, impulse_to_torque);
+    mat3_copy(delta_vel_world_other, mat3_mul_mat3(delta_vel_world, inverse_inertia_tensor[1]));
+    mat3_copy(delta_vel_world_other, mat3_mul_mat3(delta_vel_world, impulse_to_torque));
+    mat3_copy(delta_vel_world_other, mat3_mul_scalar(delta_vel_world, -1));
 
-    deltaVelWorld += deltaVelWorld2;
+    mat3_copy(delta_vel_world, mat3_add_mat3(delta_vel_world, delta_vel_world_other));
 
-    inverseMass += body[1]->getInverseMass();
+    inverse_mass += rigid_body_get_inverse_mass(contact->body[1]);
   }
 
-  Matrix3 deltaVelocity = contactToWorld.transpose();
-  deltaVelocity *= deltaVelWorld;
-  deltaVelocity *= contactToWorld;
+  mat3 delta_velocity;
+  mat3_copy(delta_velocity, mat3_transpose(contact->contact_to_world));
+  mat3_copy(delta_velocity, mat3_mul_mat3(delta_velocity, delta_vel_world));
+  mat3_copy(delta_velocity, mat3_mul_mat3(delta_velocity, contact->contact_to_world));
 
-  deltaVelocity.data[0] += inverseMass;
-  deltaVelocity.data[4] += inverseMass;
-  deltaVelocity.data[8] += inverseMass;
+  delta_velocity[0] += inverse_mass;
+  delta_velocity[4] += inverse_mass;
+  delta_velocity[8] += inverse_mass;
 
-  Matrix3 impulseMatrix = deltaVelocity.inverse();
-  Vector3 velKill(desiredDeltaVelocity, -contactVelocity.y, -contactVelocity.z);
-  impulseContact = impulseMatrix.transform(velKill);
+  mat3 impulse_matrix;
+  mat3_copy(impulse_matrix, mat3_inverse(delta_velocity));
 
-  real planarImpulse = real_sqrt(
-      impulseContact.y * impulseContact.y + impulseContact.z * impulseContact.z);
-  if (planarImpulse > impulseContact.x * friction) {
-    impulseContact.y /= planarImpulse;
-    impulseContact.z /= planarImpulse;
+  vec3 vel_kill = {contact->desired_delta_velocity, -contact->contact_velocity[1], -contact->contact_velocity[2]};
 
-    impulseContact.x = deltaVelocity.data[0] + deltaVelocity.data[1] * friction * impulseContact.y + deltaVelocity.data[2] * friction * impulseContact.z;
-    impulseContact.x = desiredDeltaVelocity / impulseContact.x;
-    impulseContact.y *= friction * impulseContact.x;
-    impulseContact.z *= friction * impulseContact.x;
+  vec3_copy(impulse_contact, mat3_transform(impulse_matrix, vel_kill));
+
+  real planarImpulse = real_sqrt(impulse_contact[1] * impulse_contact[1] + impulse_contact[2] * impulse_contact[2]);
+  if (planarImpulse > impulse_contact[0] * contact->friction) {
+    impulse_contact[1] /= planarImpulse;
+    impulse_contact[2] /= planarImpulse;
+
+    impulse_contact[0] = delta_velocity[0] + delta_velocity[1] * contact->friction * impulse_contact[1] + delta_velocity[2] * contact->friction * impulse_contact[2];
+    impulse_contact[0] = contact->desired_delta_velocity / impulse_contact[0];
+    impulse_contact[1] *= contact->friction * impulse_contact[0];
+    impulse_contact[2] *= contact->friction * impulse_contact[0];
   }
-  return impulseContact;
+  return (vec3){impulse_contact[0], impulse_contact[1], impulse_contact[0]};
 }
 
-void Contact::applyPositionChange(Vector3 linearChange[2], Vector3 angularChange[2], real penetration) {
-  const real angularLimit = (real)0.2f;
-  real angularMove[2];
-  real linearMove[2];
+void contact_apply_position_change(struct Contact* contact, vec3* linear_change, vec3* angular_change, real penetration) {
+  real angular_limit = (real)0.2f;
+  real angular_move[2];
+  real linear_move[2];
 
-  real totalInertia = 0;
-  real linearInertia[2];
-  real angularInertia[2];
+  real total_inertia = 0;
+  real linear_inertia[2];
+  real angular_inertia[2];
 
-  for (unsigned i = 0; i < 2; i++)
-    if (body[i]) {
-      Matrix3 inverseInertiaTensor;
-      body[i]->getInverseInertiaTensorWorld(&inverseInertiaTensor);
+  for (unsigned int i = 0; i < 2; i++)
+    if (contact->body[i]) {
+      mat3 inverse_inertia_tensor;
+      mat3_copy(inverse_inertia_tensor, rigid_body_get_inverse_inertia_tensor_world(contact->body[i]));
 
-      Vector3 angularInertiaWorld = relativeContactPosition[i] % contactNormal;
-      angularInertiaWorld = inverseInertiaTensor.transform(angularInertiaWorld);
-      angularInertiaWorld = angularInertiaWorld % relativeContactPosition[i];
-      angularInertia[i] = angularInertiaWorld * contactNormal;
+      vec3 angular_inertia_world;
+      vec3_copy(angular_inertia_world, vec3_cross_product(contact->relative_contact_position[i], contact->contact_normal));
+      vec3_copy(angular_inertia_world, mat3_transform(inverse_inertia_tensor, angular_inertia_world));
+      vec3_copy(angular_inertia_world, vec3_cross_product(angular_inertia_world, contact->relative_contact_position[i]));
 
-      linearInertia[i] = body[i]->getInverseMass();
-
-      totalInertia += linearInertia[i] + angularInertia[i];
+      angular_inertia[i] = vec3_magnitude(vec3_component_product(angular_inertia_world, contact->contact_normal));
+      linear_inertia[i] = rigid_body_get_inverse_mass(contact->body[i]);
+      total_inertia += linear_inertia[i] + angular_inertia[i];
     }
 
-  for (unsigned i = 0; i < 2; i++)
-    if (body[i]) {
+  for (unsigned int i = 0; i < 2; i++)
+    if (contact->body[i]) {
       real sign = (i == 0) ? 1 : -1;
-      angularMove[i] = sign * penetration * (angularInertia[i] / totalInertia);
-      linearMove[i] = sign * penetration * (linearInertia[i] / totalInertia);
+      angular_move[i] = sign * penetration * (angular_inertia[i] / total_inertia);
+      linear_move[i] = sign * penetration * (linear_inertia[i] / total_inertia);
 
-      Vector3 projection = relativeContactPosition[i];
-      projection.addScaledVector(contactNormal, -relativeContactPosition[i].scalarProduct(contactNormal));
+      vec3 projection;
+      vec3_copy(projection, contact->relative_contact_position[i]);
+      vec3_copy(projection, vec3_add_scaled_vector(projection, contact->contact_normal, -vec3_scalar_product(contact->relative_contact_position[i], contact->contact_normal)));
 
-      real maxMagnitude = angularLimit * projection.magnitude();
+      real max_magnitude = angular_limit * vec3_magnitude(projection);
 
-      if (angularMove[i] < -maxMagnitude) {
-        real totalMove = angularMove[i] + linearMove[i];
-        angularMove[i] = -maxMagnitude;
-        linearMove[i] = totalMove - angularMove[i];
-      } else if (angularMove[i] > maxMagnitude) {
-        real totalMove = angularMove[i] + linearMove[i];
-        angularMove[i] = maxMagnitude;
-        linearMove[i] = totalMove - angularMove[i];
+      if (angular_move[i] < -max_magnitude) {
+        real totalMove = angular_move[i] + linear_move[i];
+        angular_move[i] = -max_magnitude;
+        linear_move[i] = totalMove - angular_move[i];
+      } else if (angular_move[i] > max_magnitude) {
+        real totalMove = angular_move[i] + linear_move[i];
+        angular_move[i] = max_magnitude;
+        linear_move[i] = totalMove - angular_move[i];
       }
 
-      if (angularMove[i] == 0)
-        angularChange[i].clear();
+      if (angular_move[i] == 0)
+        vec3_clear(angular_change[i]);
       else {
-        Vector3 targetAngularDirection = relativeContactPosition[i].vectorProduct(contactNormal);
+        vec3 target_angular_direction;
+        vec3_copy(target_angular_direction, vec3_cross_product(contact->relative_contact_position[i], contact->contact_normal));
 
-        Matrix3 inverseInertiaTensor;
-        body[i]->getInverseInertiaTensorWorld(&inverseInertiaTensor);
+        mat3 inverse_inertia_tensor;
+        mat3_copy(inverse_inertia_tensor, rigid_body_get_inertia_tensor_world(contact->body[i]));
 
-        angularChange[i] = inverseInertiaTensor.transform(targetAngularDirection) * (angularMove[i] / angularInertia[i]);
+        vec3_copy(angular_change[i], vec3_mul_scalar(mat3_transform(inverse_inertia_tensor, target_angular_direction), (angular_move[i] / angular_inertia[i]));
       }
 
-      linearChange[i] = contactNormal * linearMove[i];
+      vec3_copy(linear_change[i], vec3_mul_scalar(contact->contact_normal, linear_move[i]));
 
-      Vector3 pos;
-      body[i]->getPosition(&pos);
-      pos.addScaledVector(contactNormal, linearMove[i]);
-      body[i]->setPosition(pos);
+      vec3 pos;
+      vec3_copy(pos, rigid_body_get_position(contact->body[i]));
+      vec3_copy(pos, vec3_add_scaled_vector(pos, contact->contact_normal, linear_move[i]));
+      rigid_body_set_position(contact->body[i], pos);
 
-      Quaternion q;
-      body[i]->getOrientation(&q);
-      q.addScaledVector(angularChange[i], ((real)1.0));
-      body[i]->setOrientation(q);
+      quaternion q;
+      quaternion_copy(q, rigi_body_get_orientation(contact->body[i]));
+      quaternion_add_scaled_vector(q, angular_change[i], ((real)1.0));
+      rigid_body_set_orientation(contact->body[i], q);
 
-      if (!body[i]->getAwake())
-        body[i]->calculateDerivedData();
+      if (!rigid_body_get_is_awake(contact->body[i]))
+        rigid_body_calculate_derived_data(contact->body[i]);
     }
 }
 
-ContactResolver::ContactResolver(unsigned iterations,
-                                 real velocityEpsilon,
-                                 real positionEpsilon) {
+ContactResolver::ContactResolver(unsigned iterations, real velocityEpsilon, real positionEpsilon) {
   setIterations(iterations, iterations);
   setEpsilon(velocityEpsilon, positionEpsilon);
 }
 
-ContactResolver::ContactResolver(unsigned velocityIterations,
-                                 unsigned positionIterations,
-                                 real velocityEpsilon,
-                                 real positionEpsilon) {
+ContactResolver::ContactResolver(unsigned velocityIterations, unsigned positionIterations, real velocityEpsilon, real positionEpsilon) {
   setIterations(velocityIterations);
   setEpsilon(velocityEpsilon, positionEpsilon);
 }
@@ -311,14 +316,12 @@ void ContactResolver::setIterations(unsigned iterations) {
   setIterations(iterations, iterations);
 }
 
-void ContactResolver::setIterations(unsigned velocityIterations,
-                                    unsigned positionIterations) {
+void ContactResolver::setIterations(unsigned velocityIterations, unsigned positionIterations) {
   ContactResolver::velocityIterations = velocityIterations;
   ContactResolver::positionIterations = positionIterations;
 }
 
-void ContactResolver::setEpsilon(real velocityEpsilon,
-                                 real positionEpsilon) {
+void ContactResolver::setEpsilon(real velocityEpsilon, real positionEpsilon) {
   ContactResolver::velocityEpsilon = velocityEpsilon;
   ContactResolver::positionEpsilon = positionEpsilon;
 }
