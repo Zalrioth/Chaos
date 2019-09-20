@@ -49,8 +49,13 @@ static inline void contact_resolver_adjust_velocities(struct ContactResolver* co
 static inline void contact_resolver_adjust_positions(struct ContactResolver* contact_resolver, struct Contact* contact, unsigned num_contacts, real duration);
 
 struct ContactGenerator {
-  void (*add_contact)(struct Contact*, unsigned int);
+  unsigned int (*add_contact)(struct Contact*, unsigned int);
   //virtual unsigned addContact(Contact* contact, unsigned limit) const = 0;
+};
+
+struct ContactGenRegistration {
+  struct ContactGenerator* gen;
+  struct ContactGenRegistration* next;
 };
 
 #endif  // CONTACTS_H

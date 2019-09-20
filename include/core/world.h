@@ -18,30 +18,19 @@
 //real chaos::getSleepEpsilon() {
 //    return chaos::sleepEpsilon;
 //}
-namespace chaos {
-class World {
-  bool calculateIterations;
-  struct BodyRegistration {
-    RigidBody* body;
-    BodyRegistration* next;
-  };
-  BodyRegistration* firstBody;
-  ContactResolver resolver;
-  struct ContactGenRegistration {
-    ContactGenerator* gen;
-    ContactGenRegistration* next;
-  };
-  ContactGenRegistration* firstContactGen;
-  Contact* contacts;
-  unsigned maxContacts;
-
- public:
-  World(unsigned maxContacts, unsigned iterations = 0);
-  ~World();
-  unsigned generateContacts();
-  void runPhysics(real duration);
-  void startFrame();
+struct World {
+  bool calculate_iterations;
+  struct BodyRegistration* first_body;
+  struct ContactResolver resolver;
+  struct ContactGenRegistration* first_contact_gen;
+  struct Contact* contacts;
+  unsigned int max_contacts;
 };
-}  // namespace chaos
+
+static inline void world_init(struct World* world, unsigned int max_contacts, unsigned int iterations);
+static inline void world_delete(struct World* world);
+static inline void world_start_frame(struct World* world);
+static inline unsigned int world_generate_contacts(struct World* world);
+static inline void world_run_physics(struct World* world, real duration);
 
 #endif  // WORLD_H

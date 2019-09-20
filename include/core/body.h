@@ -80,4 +80,9 @@ static inline real* rigid_body_get_acceleration(struct RigidBody* rigid_body);
 static inline bool rigid_body_get_is_awake(struct RigidBody* rigid_body);
 static inline bool rigid_body_get_can_sleep(struct RigidBody* rigid_body);
 
+struct BodyRegistration {
+  struct RigidBody* body;
+  struct BodyRegistration* next;
+};
+
 #endif  // BODY_H
