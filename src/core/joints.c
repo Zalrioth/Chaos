@@ -1,40 +1,38 @@
-#include <core/joints.hpp>
+#include "core/joints.h"
 
-using namespace chaos;
+static inline unsigned int joint_add_contact(struct Joint* joint, struct Contact* contact, unsigned limit) {
+  vec3 a_pos_world;
+  vec3_copy(a_pos_world, rigid_body_get_point_in_world_space(joint->body[0], joint->position[0]));
+  vec3 b_pos_world;
+  vec3_copy(a_pos_world, rigid_body_get_point_in_world_space(joint->body[1], joint->position[1]));
 
-unsigned Joint::addContact(Contact* contact, unsigned limit) const
-{
-    Vector3 a_pos_world = body[0]->getPointInWorldSpace(position[0]);
-    Vector3 b_pos_world = body[1]->getPointInWorldSpace(position[1]);
+  vec3 a_to_b;
+  vec3_copy(a_to_b, vec3_sub(b_pos_world, a_pos_world));
 
-    Vector3 a_to_b = b_pos_world - a_pos_world;
-    Vector3 normal = a_to_b;
-    normal.normalise();
-    real length = a_to_b.magnitude();
+  vec3 normal;
+  vec3_copy(normal, vec3_normalise(a_to_b));
 
-    if (real_abs(length) > error) {
-        contact->body[0] = body[0];
-        contact->body[1] = body[1];
-        contact->contactNormal = normal;
-        contact->contactPoint = (a_pos_world + b_pos_world) * 0.5f;
-        contact->penetration = length - error;
-        contact->friction = 1.0f;
-        contact->restitution = 0;
-        return 1;
-    }
+  real length = vec3_magnitude(a_to_b);
+  if (real_abs(length) > joint->error) {
+    contact->body[0] = joint->body[0];
+    contact->body[1] = joint->body[1];
+    vec3_copy(contact->contact_normal, normal);
+    vec3_copy(contact->contact_point, vec3_mul_scalar(vec3_add(a_pos_world, b_pos_world), 0.5f));
+    contact->penetration = length - joint->error;
+    contact->friction = 1.0f;
+    contact->restitution = 0;
+    return 1;
+  }
 
-    return 0;
+  return 0;
 }
 
-void Joint::set(RigidBody* a, const Vector3& a_pos,
-    RigidBody* b, const Vector3& b_pos,
-    real error)
-{
-    body[0] = a;
-    body[1] = b;
+static inline void joint_set(struct Joint* joint, struct RigidBody* a, real* a_pos, struct RigidBody* b, real* b_pos, real error) {
+  joint->body[0] = a;
+  joint->body[1] = b;
 
-    position[0] = a_pos;
-    position[1] = b_pos;
+  vec3_copy(joint->position[0], a_pos);
+  vec3_copy(joint->position[1], b_pos);
 
-    Joint::error = error;
+  joint->error = error;
 }

@@ -1,18 +1,17 @@
 #pragma once
-#ifndef JOINTS_H_
-#define JOINTS_H_
+#ifndef JOINTS_H
+#define JOINTS_H
 
-#include "core/contacts.hpp"
+#include "core/contacts.h"
 
-namespace chaos {
-class Joint : public ContactGenerator {
-public:
-    RigidBody* body[2];
-    Vector3 position[2];
-    real error;
-    void set(RigidBody* a, const Vector3& a_pos, RigidBody* b, const Vector3& b_pos, real error);
-    unsigned addContact(Contact* contact, unsigned limit) const;
+struct Joint {
+  struct ContactGenerator contact_generator;
+  struct RigidBody* body[2];
+  vec3 position[2];
+  real error;
 };
-}
 
-#endif // JOINTS_H_
+static inline void joint_set(struct Joint* joint, struct RigidBody* a, real* a_pos, struct RigidBody* b, real* b_pos, real error);
+static inline unsigned int joint_add_contact(struct Joint* joint, struct Contact* contact, unsigned limit);
+
+#endif  // JOINTS_H
