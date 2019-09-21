@@ -21,6 +21,7 @@ static inline unsigned int joint_add_contact(struct Joint* joint, struct Contact
     contact->penetration = length - joint->error;
     contact->friction = 1.0f;
     contact->restitution = 0;
+
     return 1;
   }
 
