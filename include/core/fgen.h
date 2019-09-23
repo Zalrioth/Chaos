@@ -23,7 +23,7 @@ struct Gravity {
 };
 
 gravity_init(struct Gravity* gravity);
-void gravity_update_force(strict RigidBody* body, real duration);
+void gravity_update_force(struct RigidBody* body, real duration);
 
 class Spring : public ForceGenerator {
   Vector3 connectionPoint;
