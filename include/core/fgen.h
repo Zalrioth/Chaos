@@ -1,24 +1,29 @@
 #pragma once
-#ifndef FGEN_H_
-#define FGEN_H_
+#ifndef FGEN_H
+#define FGEN_H
 
-#include <vector>
-#include "core/body.hpp"
-#include "core/pfgen.hpp"
+#include "core/body.h"
 
-namespace chaos {
-class ForceGenerator {
- public:
-  virtual void updateForce(RigidBody* body, real duration) = 0;
+// Swith this to a DOB approach
+// TODO: Redo this don't like how this works
+enum ForceType { GRAVITY,
+                 GAME_STATE };
+
+union Force {
+  struct Gravity gravity;
 };
 
-class Gravity : public ForceGenerator {
-  Vector3 gravity;
-
- public:
-  Gravity(const Vector3& gravity);
-  virtual void updateForce(RigidBody* body, real duration);
+struct ForceGenerator {
+  enum ForceType force_type;
+  void (*update_force)(struct RigidBody*, real);
 };
+
+struct Gravity {
+  vec3 gravity;
+};
+
+gravity_init(struct Gravity* gravity);
+void gravity_update_force(strict RigidBody* body, real duration);
 
 class Spring : public ForceGenerator {
   Vector3 connectionPoint;
@@ -128,6 +133,5 @@ class ForceRegistry {
   void clear();
   void updateForces(real duration);
 };
-}  // namespace chaos
 
-#endif  // FGEN_H_
+#endif  // FGEN_H
