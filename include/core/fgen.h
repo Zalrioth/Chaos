@@ -73,8 +73,7 @@ class Aero : public ForceGenerator {
   virtual void updateForce(RigidBody* body, real duration);
 
  protected:
-  void updateForceFromTensor(RigidBody* body, real duration,
-                             const Matrix3& tensor);
+  void updateForceFromTensor(RigidBody* body, real duration, const Matrix3& tensor);
 };
 
 class AeroControl : public Aero {
