@@ -51,7 +51,7 @@ static inline real* rigid_body_get_position(struct RigidBody* rigid_body);
 static inline void rigid_body_set_orientation(struct RigidBody* rigid_body, real* orientation);
 static inline void rigid_body_set_orientation_rijk(struct RigidBody* rigid_body, real r, real i, real j, real k);
 static inline real* rigid_body_get_orientation(struct RigidBody* rigid_body);
-static inline void rigid_body_get_transform(struct RigidBody* rigid_body);
+static inline real* rigid_body_get_transform(struct RigidBody* rigid_body);
 static inline void rigid_body_get_transform_4x4(struct RigidBody* rigid_body, real* matrix);
 static inline void rigid_body_get_transform_gl4x4(struct RigidBody* rigid_body, real* matrix);
 static inline real* rigid_body_get_point_in_local_space(struct RigidBody* rigid_body, real* point);

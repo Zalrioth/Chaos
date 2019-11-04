@@ -9,10 +9,10 @@
 #define FORCE_VECTOR_RESIZE_FACTOR 2
 
 struct Gravity {
-  vec3 gravity;
+  vec3 gravity_direction;
 };
 
-void gravity_init(struct Gravity* gravity);
+void gravity_init(struct Gravity* gravity, real* gravity_direction);
 void gravity_update_force(struct Gravity* gravity, struct RigidBody* body, real duration);
 
 struct Spring {
@@ -42,40 +42,41 @@ struct Explosion {
   real convection_duration;
 };
 
-void explosion_init(struct Explosion* explosion);
-void explosion_update_force(struct Explosion* explosion, struct RigidBody* body, real duration);
+//void explosion_init(struct Explosion* explosion);
+//void explosion_update_force(struct Explosion* explosion, struct RigidBody* body, real duration);
 
 struct Aero {
   mat3 tensor;
   vec3 position;
   // NOTE: Might be dangerous watch
-  vec3* wind_speed;
+  real* wind_speed;
 };
 
-void aero_init(struct Aero aero, real* tensor, real* position, real* wind_speed);
-void aero_update_force(struct Aero aero, struct RigidBody* body, real duration);
-void aero_update_force_from_tensor(struct Aero aero, struct RigidBody* body, real duration, real* tensor);
+void aero_init(struct Aero* aero, real* tensor, real* position, real* wind_speed);
+void aero_update_force(struct Aero* aero, struct RigidBody* body, real duration);
+void aero_update_force_from_tensor(struct Aero* aero, struct RigidBody* body, real duration, real* tensor);
 
 struct AeroControl {
-  struct Aero aero;
+  struct Aero* aero;
   mat3 max_tensor;
   mat3 min_tensor;
-  real controlSetting;
+  real control_setting;
 };
 
-void aero_control_init(struct AeroControl aero_control, real* base, real* min, real* max, real* position, real* windspeed);
-real* aero_control_get_tensor(struct AeroControl aero_control);
-void aero_control_set_control(struct AeroControl aero_control, real value);
-void aero_update_force(struct AeroControl aero_control, struct RigidBody* body, real duration);
+void aero_control_init(struct AeroControl* aero_control, real* base, real* min, real* max, real* position, real* wind_speed);
+void aero_control_delete(struct AeroControl* aero_control);
+real* aero_control_get_tensor(struct AeroControl* aero_control);
+void aero_control_set_control(struct AeroControl* aero_control, real value);
+void aero_update_force(struct AeroControl* aero_control, struct RigidBody* body, real duration);
 
 struct AngledAero {
   struct Aero aero;
   quaternion orientation;
 };
 
-void angled_aero_init(struct AngledAero angled_aero, real* tensor, real* position, real* windspeed);
-void angled_aero_set_orientation(real* quat);
-void angled_aero_update_force(struct AngledAero angled_aero, struct RigidBody* body, real duration);
+//void angled_aero_init(struct AngledAero* angled_aero, real* tensor, real* position, real* windspeed);
+//void angled_aero_set_orientation(real* quat);
+//void angled_aero_update_force(struct AngledAero* angled_aero, struct RigidBody* body, real duration);
 
 struct Buoyancy {
   real max_depth;
@@ -86,8 +87,8 @@ struct Buoyancy {
 };
 
 // Note: Default liquid density is 1000.0f
-void buoyancy_init(struct Buoyancy buoyancy, real* c_of_b, real max_depth, real volume, real water_height, real liquid_density);
-void buoyancy_update_force(struct Buoyancy buoyancy, struct RigidBody* body, real duration);
+void buoyancy_init(struct Buoyancy* buoyancy, real* c_of_b, real max_depth, real volume, real water_height, real liquid_density);
+void buoyancy_update_force(struct Buoyancy* buoyancy, struct RigidBody* body, real duration);
 
 //////////////////////////////////////////////////////
 

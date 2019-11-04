@@ -173,7 +173,7 @@ static inline real* rigid_body_get_orientation(struct RigidBody* rigid_body) {
   return rigid_body->orientation;
 }
 
-static inline void rigid_body_get_transform(struct RigidBody* rigid_body) {
+static inline real* rigid_body_get_transform(struct RigidBody* rigid_body) {
   return rigid_body->transform_matrix;
 }
 
