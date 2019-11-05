@@ -1,97 +1,72 @@
-#ifndef COLLIDE_FINE_H_
-#define COLLIDE_FINE_H_
+#pragma once
+#ifndef COLLIDE_FINE_H
+#define COLLIDE_FINE_H
 
-#include "core/contacts.hpp"
-#include <assert.h>
+#include <memory.h>
 #include <cstdio>
 #include <cstdlib>
-#include <memory.h>
+#include "core/contacts.h"
 
-namespace chaos {
-class IntersectionTests;
-class CollisionDetector;
-
-class CollisionPrimitive {
-public:
-    friend class IntersectionTests;
-    friend class CollisionDetector;
-    RigidBody* body;
-    Matrix4 offset;
-    void calculateInternals();
-    Vector3 getAxis(unsigned index) const
-    {
-        return transform.getAxisVector(index);
-    }
-    const Matrix4& getTransform() const
-    {
-        return transform;
-    }
-
-protected:
-    Matrix4 transform;
+struct CollisionPrimitive {
+  struct RigidBody* body;
+  mat4 offset;
+  mat4 transform;
 };
 
-class CollisionSphere : public CollisionPrimitive {
-public:
-    real radius;
+void collision_primitive_calculate_internals(struct CollisionPrimitive* collision_primitive);
+real* collision_primitive_get_axis(struct CollisionPrimitive* collision_primitive, unsigned int index);
+real* collision_primitive_get_transform(struct CollisionPrimitive* collision_primitive);
+
+struct CollisionSphere {
+  struct CollisionPrimitive collision_primitive;
+  real radius;
 };
 
-class CollisionPlane {
-public:
-    Vector3 direction;
-    real offset;
+struct CollisionPlane {
+  vec3 direction;
+  real offset;
 };
 
-class CollisionBox : public CollisionPrimitive {
-public:
-    Vector3 halfSize;
+struct CollisionBox {
+  struct CollisionPrimitive collision_primitive;
+  vec3 half_size;
 };
 
-class IntersectionTests {
-public:
-    static bool sphereAndHalfSpace(const CollisionSphere& sphere, const CollisionPlane& plane);
-    static bool sphereAndSphere(const CollisionSphere& one, const CollisionSphere& two);
-    static bool boxAndBox(const CollisionBox& one, const CollisionBox& two);
-    static bool boxAndHalfSpace(const CollisionBox& box, const CollisionPlane& plane);
-};
+static inline bool intersection_test_sphere_and_half_space(struct CollisionSphere* sphere, struct CollisionPlane* plane);
+static inline bool intersection_test_sphere_and_sphere(struct CollisionSphere* one, struct CollisionSphere* two);
+static inline bool intersection_test_box_and_box(struct CollisionBox* one, struct CollisionBox* two);
+static inline bool intersection_test_box_and_half_space(struct CollisionBox* box, struct CollisionPlane* plane);
 
 struct CollisionData {
-    Contact* contactArray;
-    Contact* contacts;
-    int contactsLeft;
-    unsigned contactCount;
-    real friction;
-    real restitution;
-    real tolerance;
-    bool hasMoreContacts()
-    {
-        return contactsLeft > 0;
-    }
-    void reset(unsigned maxContacts)
-    {
-        contactsLeft = maxContacts;
-        contactCount = 0;
-        contacts = contactArray;
-    }
-    void addContacts(unsigned count)
-    {
-        contactsLeft -= count;
-        contactCount += count;
-
-        contacts += count;
-    }
+  struct Contact* contact_array;
+  struct Contact* contacts;
+  int contacts_left;
+  unsigned int contact_count;
+  real friction;
+  real restitution;
+  real tolerance;
 };
 
-class CollisionDetector {
-public:
-    static unsigned sphereAndHalfSpace(const CollisionSphere& sphere, const CollisionPlane& plane, CollisionData* data);
-    static unsigned sphereAndTruePlane(const CollisionSphere& sphere, const CollisionPlane& plane, CollisionData* data);
-    static unsigned sphereAndSphere(const CollisionSphere& one, const CollisionSphere& two, CollisionData* data);
-    static unsigned boxAndHalfSpace(const CollisionBox& box, const CollisionPlane& plane, CollisionData* data);
-    static unsigned boxAndBox(const CollisionBox& one, const CollisionBox& two, CollisionData* data);
-    static unsigned boxAndPoint(const CollisionBox& box, const Vector3& point, CollisionData* data);
-    static unsigned boxAndSphere(const CollisionBox& box, const CollisionSphere& sphere, CollisionData* data);
-};
+bool collision_data_has_more_contacts(struct CollisionData* collision_data) {
+  return collision_data->contacts_left > 0;
+}
+void collision_data_reset(struct CollisionData* collision_data, unsigned int max_contacts) {
+  collision_data->contacts_left = max_contacts;
+  collision_data->contact_count = 0;
+  collision_data->contacts = collision_data->contact_array;
+}
+void collision_data_add_contacts(struct CollisionData* collision_data, unsigned int count) {
+  collision_data->contacts_left -= count;
+  collision_data->contact_count += count;
+  collision_data->contacts += count;
 }
 
-#endif // COLLIDE_FINE_H_
+static inline unsigned int collision_detector_sphere_and_half_space(struct CollisionSphere* sphere, struct CollisionPlane* plane, struct CollisionData* data);
+static inline unsigned int collision_detector_sphere_and_true_plane(struct CollisionSphere* sphere, struct CollisionPlane* plane, struct CollisionData* data);
+static inline unsigned int collision_detector_sphere_and_sphere(struct CollisionSphere* one, struct CollisionSphere* two, struct CollisionData* data);
+static inline unsigned int collision_detector_box_and_half_space(struct CollisionBox* box, struct CollisionPlane* plane, struct CollisionData* data);
+static inline unsigned int collision_detector_box_and_box(struct CollisionBox* one, struct CollisionBox* two, struct CollisionData* data);
+static inline unsigned int collision_detector_box_and_point(struct CollisionBox* box, struct Vector3* point, struct CollisionData* data);
+static inline unsigned int collision_detector_box_and_sphere(struct CollisionBox* box, struct CollisionSphere* sphere, struct CollisionData* data);
+
+#endif  // COLLIDE_FINE_H

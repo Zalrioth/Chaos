@@ -57,7 +57,7 @@ void aero_update_force(struct Aero* aero, struct RigidBody* body, real duration)
 void aero_update_force_from_tensor(struct Aero* aero, struct RigidBody* body, real duration, real* tensor);
 
 struct AeroControl {
-  struct Aero* aero;
+  struct Aero aero;
   mat3 max_tensor;
   mat3 min_tensor;
   real control_setting;
@@ -112,7 +112,7 @@ union Force {
 
 struct ForceGenerator {
   enum ForceType force_type;
-  union Force* force;
+  union Force force;
   void (*update_force)(void* force, struct RigidBody*, real);
 };
 

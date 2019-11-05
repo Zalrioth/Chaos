@@ -1,40 +1,31 @@
 #include "core/collidefine.h"
 
-using namespace chaos;
-
-void CollisionPrimitive::calculateInternals() {
-  transform = body->getTransform() * offset;
+void collision_primitive_calculate_internals(struct CollisionPrimitive* collision_primitive) {
+  mat4_copy(collision_primitive->transform, mat4_mul_mat4(rigid_body_get_transform, collision_primitive->offset));
 }
 
-bool IntersectionTests::sphereAndHalfSpace(const CollisionSphere& sphere, const CollisionPlane& plane) {
-  real ballDistance = plane.direction * sphere.getAxis(3) - sphere.radius;
-
-  return ballDistance <= plane.offset;
+real* collision_primitive_get_axis(struct CollisionPrimitive* collision_primitive, unsigned int index) {
+  return mat4_get_axis_vector(collision_primitive->transform, index);
+}
+real* collision_primitive_get_transform(struct CollisionPrimitive* collision_primitive) {
+  return collision_primitive->transform;
 }
 
-bool IntersectionTests::sphereAndSphere(const CollisionSphere& one, const CollisionSphere& two) {
-  Vector3 midline = one.getAxis(3) - two.getAxis(3);
+static inline bool intersection_test_box_and_half_space(struct CollisionBox* box, struct CollisionPlane* plane);
 
-  return midline.squareMagnitude() < (one.radius + two.radius) * (one.radius + two.radius);
+static inline bool intersection_test_sphere_and_half_space(struct CollisionSphere* sphere, struct CollisionPlane* plane) {
+  real ball_distance = vec3_magnitude(vec3_component_product(plane->direction, collision_primitive_get_axis(sphere, 3))) - sphere->radius;
+
+  return ball_distance <= plane->offset;
 }
 
-static inline real transformToAxis(const CollisionBox& box, const Vector3& axis) {
-  return box.halfSize.x * real_abs(axis * box.getAxis(0)) + box.halfSize.y * real_abs(axis * box.getAxis(1)) + box.halfSize.z * real_abs(axis * box.getAxis(2));
+static inline bool intersection_test_sphere_and_sphere(struct CollisionSphere* one, struct CollisionSphere* two) {
+  return vec3_square_magnitude(vec3_sub(collision_primitive_get_axis(one, 3), collision_primitive_get_axis(two, 3))) < (one->radius + two->radius) * (one->radius + two->radius);
 }
 
-static inline bool overlapOnAxis(const CollisionBox& one, const CollisionBox& two, const Vector3& axis, const Vector3& toCentre) {
-  real oneProject = transformToAxis(one, axis);
-  real twoProject = transformToAxis(two, axis);
-  real distance = real_abs(toCentre * axis);
-
-  return (distance < oneProject + twoProject);
-}
-
-// This preprocessor definition is only used as a convenience
-// in the boxAndBox intersection  method.
 #define TEST_OVERLAP(axis) overlapOnAxis(one, two, (axis), toCentre)
 
-bool IntersectionTests::boxAndBox(const CollisionBox& one, const CollisionBox& two) {
+static inline bool intersection_test_box_and_box(struct CollisionBox* one, struct CollisionBox* two) {
   Vector3 toCentre = two.getAxis(3) - one.getAxis(3);
 
   return (
@@ -48,6 +39,24 @@ bool IntersectionTests::boxAndHalfSpace(const CollisionBox& box, const Collision
 
   return boxDistance <= plane.offset;
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////
+
+static inline real transform_to_axis(struct CollisionBox* box, real* axis) {
+  return box.halfSize.x * real_abs(axis * box.getAxis(0)) || || || || +box.halfSize.y * real_abs(axis * box.getAxis(1)) + box.halfSize.z * real_abs(axis * box.getAxis(2));
+
+  return box->half_size[0] * real_abs(
+}
+
+static inline bool overlap_on_axis(struct CollisionBox* one, struct CollisionBox* two, struct real* axis, struct real* to_centre) {
+  real one_project = transform_to_axis(one, axis);
+  real two_project = transform_to_axis(two, axis);
+  real distance = real_abs(toCentre * axis);
+
+  return (distance < one_project + two_project);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////
 
 unsigned CollisionDetector::sphereAndTruePlane(const CollisionSphere& sphere, const CollisionPlane& plane, CollisionData* data) {
   if (data->contactsLeft <= 0)

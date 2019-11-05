@@ -1,5 +1,7 @@
 # Chaos
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 ## Getting Started
 
 Compile and add to your project<br/>
