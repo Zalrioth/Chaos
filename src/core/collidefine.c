@@ -23,13 +23,16 @@ static inline bool intersection_test_sphere_and_sphere(struct CollisionSphere* o
   return vec3_square_magnitude(vec3_sub(collision_primitive_get_axis(one, 3), collision_primitive_get_axis(two, 3))) < (one->radius + two->radius) * (one->radius + two->radius);
 }
 
-#define TEST_OVERLAP(axis) overlapOnAxis(one, two, (axis), toCentre)
+#define TEST_OVERLAP(axis) overlap_on_axis(one, two, (axis), to_centre)
 
 static inline bool intersection_test_box_and_box(struct CollisionBox* one, struct CollisionBox* two) {
-  Vector3 toCentre = two.getAxis(3) - one.getAxis(3);
+  Vector3 to_centre = two.getAxis(3) - one.getAxis(3);
+  //collision_primitive_get_axis(box, 0)
 
-  return (
-      TEST_OVERLAP(one.getAxis(0)) && TEST_OVERLAP(one.getAxis(1)) && TEST_OVERLAP(one.getAxis(2)) && TEST_OVERLAP(two.getAxis(0)) && TEST_OVERLAP(two.getAxis(1)) && TEST_OVERLAP(two.getAxis(2)) && TEST_OVERLAP(one.getAxis(0) % two.getAxis(0)) && TEST_OVERLAP(one.getAxis(0) % two.getAxis(1)) && TEST_OVERLAP(one.getAxis(0) % two.getAxis(2)) && TEST_OVERLAP(one.getAxis(1) % two.getAxis(0)) && TEST_OVERLAP(one.getAxis(1) % two.getAxis(1)) && TEST_OVERLAP(one.getAxis(1) % two.getAxis(2)) && TEST_OVERLAP(one.getAxis(2) % two.getAxis(0)) && TEST_OVERLAP(one.getAxis(2) % two.getAxis(1)) && TEST_OVERLAP(one.getAxis(2) % two.getAxis(2)));
+  vec3 to_centre =
+
+      return (
+          TEST_OVERLAP(one.getAxis(0)) && TEST_OVERLAP(one.getAxis(1)) && TEST_OVERLAP(one.getAxis(2)) && TEST_OVERLAP(two.getAxis(0)) && TEST_OVERLAP(two.getAxis(1)) && TEST_OVERLAP(two.getAxis(2)) && TEST_OVERLAP(one.getAxis(0) % two.getAxis(0)) && TEST_OVERLAP(one.getAxis(0) % two.getAxis(1)) && TEST_OVERLAP(one.getAxis(0) % two.getAxis(2)) && TEST_OVERLAP(one.getAxis(1) % two.getAxis(0)) && TEST_OVERLAP(one.getAxis(1) % two.getAxis(1)) && TEST_OVERLAP(one.getAxis(1) % two.getAxis(2)) && TEST_OVERLAP(one.getAxis(2) % two.getAxis(0)) && TEST_OVERLAP(one.getAxis(2) % two.getAxis(1)) && TEST_OVERLAP(one.getAxis(2) % two.getAxis(2)));
 }
 #undef TEST_OVERLAP
 
@@ -43,9 +46,9 @@ bool IntersectionTests::boxAndHalfSpace(const CollisionBox& box, const Collision
 /////////////////////////////////////////////////////////////////////////////////////////////////
 
 static inline real transform_to_axis(struct CollisionBox* box, real* axis) {
-  return box.halfSize.x * real_abs(axis * box.getAxis(0)) || || || || +box.halfSize.y * real_abs(axis * box.getAxis(1)) + box.halfSize.z * real_abs(axis * box.getAxis(2));
-
-  return box->half_size[0] * real_abs(
+  return box->half_size[0] * real_abs(vec3_magnitude(vec3_mul(axis, collision_primitive_get_axis(box, 0)))
+  + box->half_size[1] * real_abs(vec3_magnitude(vec3_mul(axis, collision_primitive_get_axis(box, 1)))
+  + box->half_size[2] * real_abs(vec3_magnitude(vec3_mul(axis, collision_primitive_get_axis(box, 2)));
 }
 
 static inline bool overlap_on_axis(struct CollisionBox* one, struct CollisionBox* two, struct real* axis, struct real* to_centre) {
