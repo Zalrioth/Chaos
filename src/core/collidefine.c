@@ -29,10 +29,11 @@ static inline bool intersection_test_box_and_box(struct CollisionBox* one, struc
   Vector3 to_centre = two.getAxis(3) - one.getAxis(3);
   //collision_primitive_get_axis(box, 0)
 
-  vec3 to_centre =
+  //vec3 to_centre =
+  real* to_centre;
 
-      return (
-          TEST_OVERLAP(one.getAxis(0)) && TEST_OVERLAP(one.getAxis(1)) && TEST_OVERLAP(one.getAxis(2)) && TEST_OVERLAP(two.getAxis(0)) && TEST_OVERLAP(two.getAxis(1)) && TEST_OVERLAP(two.getAxis(2)) && TEST_OVERLAP(one.getAxis(0) % two.getAxis(0)) && TEST_OVERLAP(one.getAxis(0) % two.getAxis(1)) && TEST_OVERLAP(one.getAxis(0) % two.getAxis(2)) && TEST_OVERLAP(one.getAxis(1) % two.getAxis(0)) && TEST_OVERLAP(one.getAxis(1) % two.getAxis(1)) && TEST_OVERLAP(one.getAxis(1) % two.getAxis(2)) && TEST_OVERLAP(one.getAxis(2) % two.getAxis(0)) && TEST_OVERLAP(one.getAxis(2) % two.getAxis(1)) && TEST_OVERLAP(one.getAxis(2) % two.getAxis(2)));
+  return (
+      TEST_OVERLAP(one.getAxis(0)) && TEST_OVERLAP(one.getAxis(1)) && TEST_OVERLAP(one.getAxis(2)) && TEST_OVERLAP(two.getAxis(0)) && TEST_OVERLAP(two.getAxis(1)) && TEST_OVERLAP(two.getAxis(2)) && TEST_OVERLAP(one.getAxis(0) % two.getAxis(0)) && TEST_OVERLAP(one.getAxis(0) % two.getAxis(1)) && TEST_OVERLAP(one.getAxis(0) % two.getAxis(2)) && TEST_OVERLAP(one.getAxis(1) % two.getAxis(0)) && TEST_OVERLAP(one.getAxis(1) % two.getAxis(1)) && TEST_OVERLAP(one.getAxis(1) % two.getAxis(2)) && TEST_OVERLAP(one.getAxis(2) % two.getAxis(0)) && TEST_OVERLAP(one.getAxis(2) % two.getAxis(1)) && TEST_OVERLAP(one.getAxis(2) % two.getAxis(2)));
 }
 #undef TEST_OVERLAP
 
