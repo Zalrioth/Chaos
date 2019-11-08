@@ -47,20 +47,9 @@ struct CollisionData {
   real tolerance;
 };
 
-bool collision_data_has_more_contacts(struct CollisionData* collision_data) {
-  return collision_data->contacts_left > 0;
-}
-void collision_data_reset(struct CollisionData* collision_data, unsigned int max_contacts) {
-  collision_data->contacts_left = max_contacts;
-  collision_data->contact_count = 0;
-  collision_data->contacts = collision_data->contact_array;
-}
-void collision_data_add_contacts(struct CollisionData* collision_data, unsigned int count) {
-  collision_data->contacts_left -= count;
-  collision_data->contact_count += count;
-  collision_data->contacts += count;
-}
-
+static inline bool collision_data_has_more_contacts(struct CollisionData* collision_data);
+static inline void collision_data_reset(struct CollisionData* collision_data, unsigned int max_contacts);
+static inline void collision_data_add_contacts(struct CollisionData* collision_data, unsigned int count);
 static inline unsigned int collision_detector_sphere_and_half_space(struct CollisionSphere* sphere, struct CollisionPlane* plane, struct CollisionData* data);
 static inline unsigned int collision_detector_sphere_and_true_plane(struct CollisionSphere* sphere, struct CollisionPlane* plane, struct CollisionData* data);
 static inline unsigned int collision_detector_sphere_and_sphere(struct CollisionSphere* one, struct CollisionSphere* two, struct CollisionData* data);

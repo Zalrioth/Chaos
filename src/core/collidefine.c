@@ -23,199 +23,226 @@ static inline bool intersection_test_sphere_and_sphere(struct CollisionSphere* o
   return vec3_square_magnitude(vec3_sub(collision_primitive_get_axis(one, 3), collision_primitive_get_axis(two, 3))) < (one->radius + two->radius) * (one->radius + two->radius);
 }
 
-#define TEST_OVERLAP(axis) overlap_on_axis(one, two, (axis), to_centre)
+/*#define TEST_OVERLAP(axis) overlap_on_axis(one, two, (axis), to_centre)
 
 static inline bool intersection_test_box_and_box(struct CollisionBox* one, struct CollisionBox* two) {
   Vector3 to_centre = two.getAxis(3) - one.getAxis(3);
   //collision_primitive_get_axis(box, 0)
 
   //vec3 to_centre =
-  real* to_centre;
+  real* to_centre = vec3_sub(collision_primitive_get_axis(two, 3), collision_primitive_get_axis(one, 3));
 
   return (
       TEST_OVERLAP(one.getAxis(0)) && TEST_OVERLAP(one.getAxis(1)) && TEST_OVERLAP(one.getAxis(2)) && TEST_OVERLAP(two.getAxis(0)) && TEST_OVERLAP(two.getAxis(1)) && TEST_OVERLAP(two.getAxis(2)) && TEST_OVERLAP(one.getAxis(0) % two.getAxis(0)) && TEST_OVERLAP(one.getAxis(0) % two.getAxis(1)) && TEST_OVERLAP(one.getAxis(0) % two.getAxis(2)) && TEST_OVERLAP(one.getAxis(1) % two.getAxis(0)) && TEST_OVERLAP(one.getAxis(1) % two.getAxis(1)) && TEST_OVERLAP(one.getAxis(1) % two.getAxis(2)) && TEST_OVERLAP(one.getAxis(2) % two.getAxis(0)) && TEST_OVERLAP(one.getAxis(2) % two.getAxis(1)) && TEST_OVERLAP(one.getAxis(2) % two.getAxis(2)));
 }
-#undef TEST_OVERLAP
+#undef TEST_OVERLAP*/
 
-bool IntersectionTests::boxAndHalfSpace(const CollisionBox& box, const CollisionPlane& plane) {
-  real projectedRadius = transformToAxis(box, plane.direction);
-  real boxDistance = plane.direction * box.getAxis(3) - projectedRadius;
+static inline bool intersection_test_box_and_half_space(struct CollisionBox* box, struct CollisionPlane* plane) {
+  real projected_radius = transform_to_axis(box, plane->direction);
+  real box_distance = vec3_magnitude(vec3_component_product(plane->direction, collision_primitive_get_axis(box, 3))) - projected_radius;
 
-  return boxDistance <= plane.offset;
+  return box_distance <= plane->offset;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////
 
 static inline real transform_to_axis(struct CollisionBox* box, real* axis) {
-  return box->half_size[0] * real_abs(vec3_magnitude(vec3_mul(axis, collision_primitive_get_axis(box, 0)))
-  + box->half_size[1] * real_abs(vec3_magnitude(vec3_mul(axis, collision_primitive_get_axis(box, 1)))
-  + box->half_size[2] * real_abs(vec3_magnitude(vec3_mul(axis, collision_primitive_get_axis(box, 2)));
+  return box->half_size[0] * real_abs(vec3_magnitude(vec3_mul(axis, collision_primitive_get_axis(box, 0)))) + box->half_size[1] * real_abs(vec3_magnitude(vec3_mul(axis, collision_primitive_get_axis(box, 1)))) + box->half_size[2] * real_abs(vec3_magnitude(vec3_mul(axis, collision_primitive_get_axis(box, 2))));
 }
 
 static inline bool overlap_on_axis(struct CollisionBox* one, struct CollisionBox* two, struct real* axis, struct real* to_centre) {
   real one_project = transform_to_axis(one, axis);
   real two_project = transform_to_axis(two, axis);
-  real distance = real_abs(toCentre * axis);
+  real distance = real_abs(vec3_magnitude(vec3_component_product(to_centre, axis)));
 
   return (distance < one_project + two_project);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////
 
-unsigned CollisionDetector::sphereAndTruePlane(const CollisionSphere& sphere, const CollisionPlane& plane, CollisionData* data) {
-  if (data->contactsLeft <= 0)
+static inline bool collision_data_has_more_contacts(struct CollisionData* collision_data) {
+  return collision_data->contacts_left > 0;
+}
+
+static inline void collision_data_reset(struct CollisionData* collision_data, unsigned int max_contacts) {
+  collision_data->contacts_left = max_contacts;
+  collision_data->contact_count = 0;
+  collision_data->contacts = collision_data->contact_array;
+}
+
+static inline void collision_data_add_contacts(struct CollisionData* collision_data, unsigned int count) {
+  collision_data->contacts_left -= count;
+  collision_data->contact_count += count;
+  collision_data->contacts += count;
+}
+
+static inline unsigned int collision_detector_sphere_and_true_plane(struct CollisionSphere* sphere, struct CollisionPlane* plane, struct CollisionData* data) {
+  if (data->contacts_left <= 0)
     return 0;
 
-  Vector3 position = sphere.getAxis(3);
-  real centreDistance = plane.direction * position - plane.offset;
+  vec3 position;
+  vec3_copy(position, collision_primitive_get_axis(sphere, 3));
 
-  if (centreDistance * centreDistance > sphere.radius * sphere.radius)
+  real centre_distance = vec3_magnitude(vec3_component_product(plane->direction, position)) - plane->offset;
+  if (centre_distance * centre_distance > sphere->radius * sphere->radius)
     return 0;
 
-  Vector3 normal = plane.direction;
-  real penetration = -centreDistance;
-  if (centreDistance < 0) {
-    normal *= -1;
+  vec3 normal;
+  vec3_copy(normal, plane->direction);
+
+  real penetration = -centre_distance;
+  if (centre_distance < 0) {
+    vec3_copy(normal, vec3_mul_scalar(normal, -1));
     penetration = -penetration;
   }
-  penetration += sphere.radius;
+  penetration += sphere->radius;
 
-  Contact* contact = data->contacts;
-  contact->contactNormal = normal;
+  struct Contact* contact = data->contacts;
+  vec3_copy(contact->contact_normal, normal);
   contact->penetration = penetration;
-  contact->contactPoint = position - plane.direction * centreDistance;
-  contact->setBodyData(sphere.body, NULL, data->friction, data->restitution);
+  vec3_copy(contact->contact_point, vec3_sub(position, vec3_mul_scalar(plane->direction, centre_distance)));
+  contact_set_body_data(contact, sphere->collision_primitive.body, NULL, data->friction, data->restitution);
 
-  data->addContacts(1);
-
-  return 1;
-}
-
-unsigned CollisionDetector::sphereAndHalfSpace(const CollisionSphere& sphere, const CollisionPlane& plane, CollisionData* data) {
-  if (data->contactsLeft <= 0)
-    return 0;
-
-  Vector3 position = sphere.getAxis(3);
-  real ballDistance = plane.direction * position - sphere.radius - plane.offset;
-
-  if (ballDistance >= 0)
-    return 0;
-
-  Contact* contact = data->contacts;
-  contact->contactNormal = plane.direction;
-  contact->penetration = -ballDistance;
-  contact->contactPoint = position - plane.direction * (ballDistance + sphere.radius);
-  contact->setBodyData(sphere.body, NULL, data->friction, data->restitution);
-
-  data->addContacts(1);
+  collision_data_add_contacts(data, 1);
 
   return 1;
 }
 
-unsigned CollisionDetector::sphereAndSphere(const CollisionSphere& one, const CollisionSphere& two, CollisionData* data) {
-  if (data->contactsLeft <= 0)
+static inline unsigned int collision_detector_sphere_and_half_space(struct CollisionSphere* sphere, struct CollisionPlane* plane, struct CollisionData* data) {
+  if (data->contacts_left <= 0)
     return 0;
 
-  Vector3 positionOne = one.getAxis(3);
-  Vector3 positionTwo = two.getAxis(3);
+  vec3 position;
+  vec3_copy(position, collision_primitive_get_axis(sphere, 3));
 
-  Vector3 midline = positionOne - positionTwo;
-  real size = midline.magnitude();
-
-  if (size <= 0.0f || size >= one.radius + two.radius)
+  real ball_distance = vec3_magnitude(vec3_component_product(plane->direction, position)) - sphere->radius - plane->offset;
+  if (ball_distance >= 0)
     return 0;
 
-  Vector3 normal = midline * (((real)1.0) / size);
+  struct Contact* contact = data->contacts;
+  vec3_copy(contact->contact_normal, plane->direction);
+  contact->penetration = -ball_distance;
+  vec3_copy(contact->contact_point, vec3_sub(position, vec3_mul_scalar(plane->direction, ball_distance + sphere->radius)));
+  contact_set_body_data(contact, sphere->collision_primitive.body, NULL, data->friction, data->restitution);
 
-  Contact* contact = data->contacts;
-  contact->contactNormal = normal;
-  contact->contactPoint = positionOne + midline * (real)0.5;
-  contact->penetration = (one.radius + two.radius - size);
-  contact->setBodyData(one.body, two.body, data->friction, data->restitution);
-
-  data->addContacts(1);
+  collision_data_add_contacts(data, 1);
 
   return 1;
 }
 
-static inline real penetrationOnAxis(const CollisionBox& one, const CollisionBox& two, const Vector3& axis, const Vector3& toCentre) {
-  real oneProject = transformToAxis(one, axis);
-  real twoProject = transformToAxis(two, axis);
-  real distance = real_abs(toCentre * axis);
+static inline unsigned int collision_detector_sphere_and_sphere(struct CollisionSphere* one, struct CollisionSphere* two, struct CollisionData* data) {
+  if (data->contacts_left <= 0)
+    return 0;
 
-  return oneProject + twoProject - distance;
+  vec3 position_one;
+  vec3_copy(position_one, collision_primitive_get_axis(one, 3));
+
+  vec3 position_two;
+  vec3_copy(position_two, collision_primitive_get_axis(two, 3));
+
+  vec3 midline;
+  vec3_copy(midline, vec3_sub(position_one, position_two));
+
+  real size = vec3_magnitude(midline);
+  if (size <= 0.0f || size >= one->radius + two->radius)
+    return 0;
+
+  vec3 normal;
+  vec3_copy(normal, vec3_mul_scalar(midline, ((real)1.0) / size));
+
+  struct Contact* contact = data->contacts;
+  vec3_copy(contact->contact_normal, normal);
+  vec3_copy(contact->contact_point, vec3_add(position_one, vec3_mul_scalar(midline, (real)0.5)));
+  contact->penetration = (one->radius + two->radius - size);
+  contact_set_body_data(contact, one->collision_primitive.body, two->collision_primitive.body, data->friction, data->restitution);
+
+  collision_data_add_contacts(data, 1);
+
+  return 1;
 }
 
-static inline bool tryAxis(const CollisionBox& one, const CollisionBox& two, Vector3 axis, const Vector3& toCentre, unsigned index, real& smallestPenetration, unsigned& smallestCase) {
-  if (axis.squareMagnitude() < 0.0001)
+static inline real penetration_on_axis(struct CollisionBox* one, struct CollisionBox* two, real* axis, real* to_centre) {
+  real one_project = transform_to_axis(one, axis);
+  real two_project = transform_to_axis(two, axis);
+  real distance = real_abs(vec3_magnitude(vec3_component_product(to_centre, axis)));
+
+  return one_project + two_project - distance;
+}
+
+static inline bool try_axis(struct CollisionBox* one, struct CollisionBox* two, real* axis, real* to_centre, unsigned int index, real* smallest_penetration, unsigned int* smallest_case) {
+  if (vec3_square_magnitude(axis) < 0.0001)
     return true;
-  axis.normalise();
 
-  real penetration = penetrationOnAxis(one, two, axis, toCentre);
+  vec3_copy(axis, vec3_normalise(axis));
+
+  real penetration = penetration_on_axis(one, two, axis, to_centre);
 
   if (penetration < 0)
     return false;
-  if (penetration < smallestPenetration) {
-    smallestPenetration = penetration;
-    smallestCase = index;
+  if (penetration < *smallest_penetration) {
+    *smallest_penetration = penetration;
+    *smallest_case = index;
   }
   return true;
 }
 
-void fillPointFaceBoxBox(const CollisionBox& one, const CollisionBox& two, const Vector3& toCentre, CollisionData* data, unsigned best, real pen) {
-  Contact* contact = data->contacts;
+void fill_point_face_box_box(struct CollisionBox* one, struct CollisionBox* two, real* to_centre, struct CollisionData* data, unsigned int best, real pen) {
+  struct Contact* contact = data->contacts;
 
-  Vector3 normal = one.getAxis(best);
-  if (one.getAxis(best) * toCentre > 0)
-    normal = normal * -1.0f;
+  vec3 normal;
+  vec3_copy(normal, collision_primitive_get_axis(one, best));
 
-  Vector3 vertex = two.halfSize;
-  if (two.getAxis(0) * normal < 0)
-    vertex.x = -vertex.x;
-  if (two.getAxis(1) * normal < 0)
-    vertex.y = -vertex.y;
-  if (two.getAxis(2) * normal < 0)
-    vertex.z = -vertex.z;
+  if (vec3_magnitude(vec3_mul(collision_primitive_get_axis(one, best), to_centre)) > 0)
+    vec3_copy(normal, vec3_mul_scalar(normal, -1.0f));
 
-  contact->contactNormal = normal;
+  vec3 vertex;
+  vec3_copy(vertex, two->half_size);
+
+  if (vec3_magnitude(vec3_mul(collision_primitive_get_axis(two, 0), normal)) < 0)
+    vertex[0] = -vertex[0];
+  if (vec3_magnitude(vec3_mul(collision_primitive_get_axis(two, 1), normal)) < 0)
+    vertex[1] = -vertex[1];
+  if (vec3_magnitude(vec3_mul(collision_primitive_get_axis(two, 2), normal)) < 0)
+    vertex[2] = -vertex[2];
+
+  vec3_copy(contact->contact_normal, normal);
   contact->penetration = pen;
-  contact->contactPoint = two.getTransform() * vertex;
-  contact->setBodyData(one.body, two.body, data->friction, data->restitution);
+  vec3_copy(contact->contact_point, vec3_mul(collision_primitive_get_transform(two), vertex));
+  contact_set_body_data(contact, one->collision_primitive.body, two->collision_primitive.body, data->friction, data->restitution);
 }
 
-static inline Vector3 contactPoint(const Vector3& pOne, const Vector3& dOne, real oneSize, const Vector3& pTwo, const Vector3& dTwo, real twoSize, bool useOne) {
-  Vector3 toSt, cOne, cTwo;
-  real dpStaOne, dpStaTwo, dpOneTwo, smOne, smTwo;
+static inline real* contact_point(real* p_one, real* d_one, real one_size, real* p_two, real* d_two, real two_size, bool use_one) {
+  vec3 to_st, c_one, c_two;
+  real dp_sta_one, dp_sta_two, dp_one_two, sm_one, sm_two;
   real denom, mua, mub;
 
-  smOne = dOne.squareMagnitude();
-  smTwo = dTwo.squareMagnitude();
-  dpOneTwo = dTwo * dOne;
+  sm_one = vec3_square_magnitude(d_one);
+  sm_two = vec3_square_magnitude(d_two);
+  dp_one_two = vec3_magnitude(vec3_component_product(d_two, d_one));
 
-  toSt = pOne - pTwo;
-  dpStaOne = dOne * toSt;
-  dpStaTwo = dTwo * toSt;
+  vec3_copt(to_st, vec3_sub(p_one, p_two));
+  dp_sta_one = vec3_magnitude(vec3_component_product(d_one, to_st));
+  dp_sta_two = vec3_magnitude(vec3_component_product(d_two, to_st));
 
-  denom = smOne * smTwo - dpOneTwo * dpOneTwo;
+  denom = sm_one * sm_two - dp_one_two * dp_one_two;
 
   if (real_abs(denom) < 0.0001f)
-    return useOne ? pOne : pTwo;
+    return use_one ? p_one : p_two;
 
-  mua = (dpOneTwo * dpStaTwo - smTwo * dpStaOne) / denom;
-  mub = (smOne * dpStaTwo - dpOneTwo * dpStaOne) / denom;
+  mua = (dp_one_two * dp_sta_one - sm_two * dp_sta_one) / denom;
+  mub = (sm_one * dp_sta_two - dp_one_two * dp_sta_one) / denom;
 
-  if (mua > oneSize || mua < -oneSize || mub > twoSize || mub < -twoSize) {
-    return useOne ? pOne : pTwo;
+  if (mua > one_size || mua < -one_size || mub > two_size || mub < -two_size) {
+    return use_one ? p_one : p_two;
   } else {
-    cOne = pOne + dOne * mua;
-    cTwo = pTwo + dTwo * mub;
+    vec3_copy(c_one, vec3_add(p_one, vec3_mul_scalar(d_one, mua)));
+    vec3_copy(c_two, vec3_add(p_two, vec3_mul_scalar(d_two, mub)));
 
-    return cOne * 0.5 + cTwo * 0.5;
+    return vec3_add(vec3_mul_scalar(c_one, 0.5), vec3_mul_scalar(c_two, 0.5));
   }
 }
 
-// This preprocessor definition is only used as a convenience
-// in the boxAndBox contact generation method.
+/*// This preprocessor definition is only used as a convenience in the boxAndBox contact generation method.
 #define CHECK_OVERLAP(axis, index)                              \
   if (!tryAxis(one, two, (axis), toCentre, (index), pen, best)) \
     return 0;
@@ -299,130 +326,136 @@ unsigned CollisionDetector::boxAndBox(const CollisionBox& one, const CollisionBo
   }
   return 0;
 }
-#undef CHECK_OVERLAP
+#undef CHECK_OVERLAP*/
 
-unsigned CollisionDetector::boxAndPoint(const CollisionBox& box, const Vector3& point, CollisionData* data) {
-  Vector3 relPt = box.transform.transformInverse(point);
-  Vector3 normal;
-  real min_depth = box.halfSize.x - real_abs(relPt.x);
+static inline unsigned int collision_detector_box_and_point(struct CollisionBox* box, struct Vector3* point, struct CollisionData* data) {
+  vec3 rel_pt;
+  vec3_copy(rel_pt, mat4_transform_inverse(box->collision_primitive.transform, point));
+
+  vec3 normal;
+  real min_depth = box->half_size[0] - real_abs(rel_pt[0]);
 
   if (min_depth < 0)
     return 0;
 
-  normal = box.getAxis(0) * ((relPt.x < 0) ? -1 : 1);
+  vec3_copy(normal, vec3_mul_scalar(collision_primitive_get_axis(box, 0), rel_pt[0] < 0 ? -1 : 1));
 
-  real depth = box.halfSize.y - real_abs(relPt.y);
+  real depth = box->half_size[1] - real_abs(rel_pt[1]);
   if (depth < 0)
     return 0;
   else if (depth < min_depth) {
     min_depth = depth;
-    normal = box.getAxis(1) * ((relPt.y < 0) ? -1 : 1);
+    vec3_copy(normal, vec3_mul_scalar(collision_primitive_get_axis(box, 1), rel_pt[1] < 0 ? -1 : 1));
   }
 
-  depth = box.halfSize.z - real_abs(relPt.z);
+  depth = box->half_size[2] - real_abs(rel_pt[2]);
   if (depth < 0)
     return 0;
   else if (depth < min_depth) {
     min_depth = depth;
-    normal = box.getAxis(2) * ((relPt.z < 0) ? -1 : 1);
+    vec3_copy(normal, vec3_mul_scalar(collision_primitive_get_axis(box, 2), rel_pt[2] < 0 ? -1 : 1));
   }
 
-  Contact* contact = data->contacts;
-  contact->contactNormal = normal;
-  contact->contactPoint = point;
+  struct Contact* contact = data->contacts;
+  vec3_copy(contact->contact_normal, normal);
+  vec3_copy(contact->contact_point, point);
   contact->penetration = min_depth;
 
-  contact->setBodyData(box.body, NULL, data->friction, data->restitution);
+  contact_set_body_data(contact, box->collision_primitive.body, NULL, data->friction, data->restitution);
 
-  data->addContacts(1);
+  collision_data_add_contacts(data, 1);
 
   return 1;
 }
 
-unsigned CollisionDetector::boxAndSphere(const CollisionBox& box, const CollisionSphere& sphere, CollisionData* data) {
-  Vector3 centre = sphere.getAxis(3);
-  Vector3 relCentre = box.transform.transformInverse(centre);
+static inline unsigned int collision_detector_box_and_sphere(struct CollisionBox* box, struct CollisionSphere* sphere, struct CollisionData* data) {
+  vec3 centre;
+  vec3_copy(centre, collision_primitive_get_axis(sphere, 3));
 
-  if (real_abs(relCentre.x) - sphere.radius > box.halfSize.x || real_abs(relCentre.y) - sphere.radius > box.halfSize.y || real_abs(relCentre.z) - sphere.radius > box.halfSize.z)
+  vec3 rel_centre;
+  vec3_copy(rel_centre, mat4_transform_inverse(box->collision_primitive.transform, centre));
+
+  if (real_abs(rel_centre[0]) - sphere->radius > box->half_size[0] || real_abs(rel_centre[1]) - sphere->radius > box->half_size[1] || real_abs(rel_centre[2]) - sphere->radius > box->half_size[2])
     return 0;
 
-  Vector3 closestPt(0, 0, 0);
+  vec3 closest_pt = {0.0, 0.0, 0.0};
   real dist;
 
-  dist = relCentre.x;
-  if (dist > box.halfSize.x)
-    dist = box.halfSize.x;
-  if (dist < -box.halfSize.x)
-    dist = -box.halfSize.x;
-  closestPt.x = dist;
+  dist = rel_centre[0];
+  if (dist > box->half_size[0])
+    dist = box->half_size[0];
+  if (dist < -box->half_size[0])
+    dist = -box->half_size[0];
+  closest_pt[0] = dist;
 
-  dist = relCentre.y;
-  if (dist > box.halfSize.y)
-    dist = box.halfSize.y;
-  if (dist < -box.halfSize.y)
-    dist = -box.halfSize.y;
-  closestPt.y = dist;
+  dist = rel_centre[1];
+  if (dist > box->half_size[1])
+    dist = box->half_size[1];
+  if (dist < -box->half_size[1])
+    dist = -box->half_size[1];
+  closest_pt[1] = dist;
 
-  dist = relCentre.z;
-  if (dist > box.halfSize.z)
-    dist = box.halfSize.z;
-  if (dist < -box.halfSize.z)
-    dist = -box.halfSize.z;
-  closestPt.z = dist;
+  dist = rel_centre[2];
+  if (dist > box->half_size[2])
+    dist = box->half_size[2];
+  if (dist < -box->half_size[2])
+    dist = -box->half_size[2];
+  closest_pt[2] = dist;
 
-  dist = (closestPt - relCentre).squareMagnitude();
-  if (dist > sphere.radius * sphere.radius)
+  dist = vec3_square_magnitude(vec3_sub(closest_pt, rel_centre));
+  if (dist > sphere->radius * sphere->radius)
     return 0;
 
-  Vector3 closestPtWorld = box.transform.transform(closestPt);
+  vec3 closest_pt_world;
+  vec3_copy(closest_pt_world, mat4_transform(box->collision_primitive.transform, closest_pt));
 
-  Contact* contact = data->contacts;
-  contact->contactNormal = (closestPtWorld - centre);
-  contact->contactNormal.normalise();
-  contact->contactPoint = closestPtWorld;
-  contact->penetration = sphere.radius - real_sqrt(dist);
-  contact->setBodyData(box.body, sphere.body, data->friction, data->restitution);
+  struct Contact* contact = data->contacts;
+  vec3_copy(contact->contact_normal, vec3_sub(closest_pt_world, centre));
+  vec3_copy(contact->contact_normal, vec3_normalise(contact->contact_normal));
+  vec3_copy(contact->contact_point, closest_pt_world);
+  contact->penetration = sphere->radius - real_sqrt(dist);
+  contact_set_body_data(contact, box->collision_primitive.body, sphere->collision_primitive.body, data->friction, data->restitution);
 
-  data->addContacts(1);
+  collision_data_add_contacts(data, 1);
 
   return 1;
 }
 
-unsigned CollisionDetector::boxAndHalfSpace(const CollisionBox& box, const CollisionPlane& plane, CollisionData* data) {
-  if (data->contactsLeft <= 0)
+static inline unsigned int collision_detector_box_and_half_space(struct CollisionBox* box, struct CollisionPlane* plane, struct CollisionData* data) {
+  if (data->contacts_left <= 0)
     return 0;
 
-  if (!IntersectionTests::boxAndHalfSpace(box, plane))
+  if (!intersection_test_box_and_half_space(box, plane))
     return 0;
 
   static real mults[8][3] = {{1, 1, 1}, {-1, 1, 1}, {1, -1, 1}, {-1, -1, 1}, {1, 1, -1}, {-1, 1, -1}, {1, -1, -1}, {-1, -1, -1}};
 
-  Contact* contact = data->contacts;
-  unsigned contactsUsed = 0;
-  for (unsigned i = 0; i < 8; i++) {
-    Vector3 vertexPos(mults[i][0], mults[i][1], mults[i][2]);
-    vertexPos.componentProductUpdate(box.halfSize);
-    vertexPos = box.transform.transform(vertexPos);
+  struct Contact* contact = data->contacts;
+  unsigned int contacts_used = 0;
+  for (unsigned int i = 0; i < 8; i++) {
+    vec3 vertex_pos = {mults[i][0], mults[i][1], mults[i][2]};
+    vec3_copy(vertex_pos, vec3_component_product(vertex_pos, box->half_size));
+    vec3_copy(vertex_pos, mat4_transform(box, vertex_pos));
 
-    real vertexDistance = vertexPos * plane.direction;
+    real vertex_distance = vec3_magnitude(vec3_mul(vertex_pos, plane->direction));
 
-    if (vertexDistance <= plane.offset) {
-      contact->contactPoint = plane.direction;
-      contact->contactPoint *= (vertexDistance - plane.offset);
-      contact->contactPoint += vertexPos;
-      contact->contactNormal = plane.direction;
-      contact->penetration = plane.offset - vertexDistance;
+    if (vertex_distance <= plane->offset) {
+      vec3_copy(contact->contact_point, plane->direction);
+      vec3_copy(contact->contact_point, vec3_mul_scalar(contact->contact_point, vertex_distance - plane->offset));
+      vec3_copy(contact->contact_point, vec3_add(contact->contact_point, vertex_pos));
+      vec3_copy(contact->contact_normal, plane->direction);
+      contact->penetration = plane->offset - vertex_distance;
 
-      contact->setBodyData(box.body, NULL,
-                           data->friction, data->restitution);
+      contact_set_body_data(contact, box->collision_primitive.body, NULL, data->friction, data->restitution);
 
       contact++;
-      contactsUsed++;
-      if (contactsUsed == (unsigned)data->contactsLeft)
-        return contactsUsed;
+      contacts_used++;
+      if (contacts_used == (unsigned int)data->contacts_left)
+        return contacts_used;
     }
   }
 
-  data->addContacts(contactsUsed);
-  return contactsUsed;
+  collision_data_add_contacts(data, contacts_used);
+
+  return contacts_used;
 }
