@@ -1,7 +1,19 @@
 #include "core/collidefine.h"
 
+real transform_to_axis(struct CollisionBox* box, real* axis) {
+  return box->half_size[0] * real_abs(vec3_magnitude(vec3_component_product(axis, collision_primitive_get_axis(&box->collision_primitive, 0)))) + box->half_size[1] * real_abs(vec3_magnitude(vec3_component_product(axis, collision_primitive_get_axis(&box->collision_primitive, 1)))) + box->half_size[2] * real_abs(vec3_magnitude(vec3_component_product(axis, collision_primitive_get_axis(&box->collision_primitive, 2))));
+}
+
+bool overlap_on_axis(struct CollisionBox* one, struct CollisionBox* two, real* axis, real* to_centre) {
+  real one_project = transform_to_axis(one, axis);
+  real two_project = transform_to_axis(two, axis);
+  real distance = real_abs(vec3_magnitude(vec3_component_product(to_centre, axis)));
+
+  return (distance < one_project + two_project);
+}
+
 void collision_primitive_calculate_internals(struct CollisionPrimitive* collision_primitive) {
-  mat4_copy(collision_primitive->transform, mat4_mul_mat4(rigid_body_get_transform, collision_primitive->offset));
+  mat4_copy(collision_primitive->transform, mat4_mul_mat4(rigid_body_get_transform(collision_primitive->body), collision_primitive->offset));
 }
 
 real* collision_primitive_get_axis(struct CollisionPrimitive* collision_primitive, unsigned int index) {
@@ -11,21 +23,21 @@ real* collision_primitive_get_transform(struct CollisionPrimitive* collision_pri
   return collision_primitive->transform;
 }
 
-static inline bool intersection_test_box_and_half_space(struct CollisionBox* box, struct CollisionPlane* plane);
+bool intersection_test_box_and_half_space(struct CollisionBox* box, struct CollisionPlane* plane);
 
-static inline bool intersection_test_sphere_and_half_space(struct CollisionSphere* sphere, struct CollisionPlane* plane) {
-  real ball_distance = vec3_magnitude(vec3_component_product(plane->direction, collision_primitive_get_axis(sphere, 3))) - sphere->radius;
+bool intersection_test_sphere_and_half_space(struct CollisionSphere* sphere, struct CollisionPlane* plane) {
+  real ball_distance = vec3_magnitude(vec3_component_product(plane->direction, collision_primitive_get_axis(&sphere->collision_primitive, 3))) - sphere->radius;
 
   return ball_distance <= plane->offset;
 }
 
-static inline bool intersection_test_sphere_and_sphere(struct CollisionSphere* one, struct CollisionSphere* two) {
-  return vec3_square_magnitude(vec3_sub(collision_primitive_get_axis(one, 3), collision_primitive_get_axis(two, 3))) < (one->radius + two->radius) * (one->radius + two->radius);
+bool intersection_test_sphere_and_sphere(struct CollisionSphere* one, struct CollisionSphere* two) {
+  return vec3_square_magnitude(vec3_sub(collision_primitive_get_axis(&one->collision_primitive, 3), collision_primitive_get_axis(&two->collision_primitive, 3))) < (one->radius + two->radius) * (one->radius + two->radius);
 }
 
 /*#define TEST_OVERLAP(axis) overlap_on_axis(one, two, (axis), to_centre)
 
-static inline bool intersection_test_box_and_box(struct CollisionBox* one, struct CollisionBox* two) {
+ bool intersection_test_box_and_box(struct CollisionBox* one, struct CollisionBox* two) {
   Vector3 to_centre = two.getAxis(3) - one.getAxis(3);
   //collision_primitive_get_axis(box, 0)
 
@@ -37,51 +49,37 @@ static inline bool intersection_test_box_and_box(struct CollisionBox* one, struc
 }
 #undef TEST_OVERLAP*/
 
-static inline bool intersection_test_box_and_half_space(struct CollisionBox* box, struct CollisionPlane* plane) {
+bool intersection_test_box_and_half_space(struct CollisionBox* box, struct CollisionPlane* plane) {
   real projected_radius = transform_to_axis(box, plane->direction);
-  real box_distance = vec3_magnitude(vec3_component_product(plane->direction, collision_primitive_get_axis(box, 3))) - projected_radius;
+  real box_distance = vec3_magnitude(vec3_component_product(plane->direction, collision_primitive_get_axis(&box->collision_primitive, 3))) - projected_radius;
 
   return box_distance <= plane->offset;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////
 
-static inline real transform_to_axis(struct CollisionBox* box, real* axis) {
-  return box->half_size[0] * real_abs(vec3_magnitude(vec3_mul(axis, collision_primitive_get_axis(box, 0)))) + box->half_size[1] * real_abs(vec3_magnitude(vec3_mul(axis, collision_primitive_get_axis(box, 1)))) + box->half_size[2] * real_abs(vec3_magnitude(vec3_mul(axis, collision_primitive_get_axis(box, 2))));
-}
-
-static inline bool overlap_on_axis(struct CollisionBox* one, struct CollisionBox* two, struct real* axis, struct real* to_centre) {
-  real one_project = transform_to_axis(one, axis);
-  real two_project = transform_to_axis(two, axis);
-  real distance = real_abs(vec3_magnitude(vec3_component_product(to_centre, axis)));
-
-  return (distance < one_project + two_project);
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////
-
-static inline bool collision_data_has_more_contacts(struct CollisionData* collision_data) {
+bool collision_data_has_more_contacts(struct CollisionData* collision_data) {
   return collision_data->contacts_left > 0;
 }
 
-static inline void collision_data_reset(struct CollisionData* collision_data, unsigned int max_contacts) {
+void collision_data_reset(struct CollisionData* collision_data, unsigned int max_contacts) {
   collision_data->contacts_left = max_contacts;
   collision_data->contact_count = 0;
   collision_data->contacts = collision_data->contact_array;
 }
 
-static inline void collision_data_add_contacts(struct CollisionData* collision_data, unsigned int count) {
+void collision_data_add_contacts(struct CollisionData* collision_data, unsigned int count) {
   collision_data->contacts_left -= count;
   collision_data->contact_count += count;
   collision_data->contacts += count;
 }
 
-static inline unsigned int collision_detector_sphere_and_true_plane(struct CollisionSphere* sphere, struct CollisionPlane* plane, struct CollisionData* data) {
+unsigned int collision_detector_sphere_and_true_plane(struct CollisionSphere* sphere, struct CollisionPlane* plane, struct CollisionData* data) {
   if (data->contacts_left <= 0)
     return 0;
 
   vec3 position;
-  vec3_copy(position, collision_primitive_get_axis(sphere, 3));
+  vec3_copy(position, collision_primitive_get_axis(&sphere->collision_primitive, 3));
 
   real centre_distance = vec3_magnitude(vec3_component_product(plane->direction, position)) - plane->offset;
   if (centre_distance * centre_distance > sphere->radius * sphere->radius)
@@ -108,12 +106,12 @@ static inline unsigned int collision_detector_sphere_and_true_plane(struct Colli
   return 1;
 }
 
-static inline unsigned int collision_detector_sphere_and_half_space(struct CollisionSphere* sphere, struct CollisionPlane* plane, struct CollisionData* data) {
+unsigned int collision_detector_sphere_and_half_space(struct CollisionSphere* sphere, struct CollisionPlane* plane, struct CollisionData* data) {
   if (data->contacts_left <= 0)
     return 0;
 
   vec3 position;
-  vec3_copy(position, collision_primitive_get_axis(sphere, 3));
+  vec3_copy(position, collision_primitive_get_axis(&sphere->collision_primitive, 3));
 
   real ball_distance = vec3_magnitude(vec3_component_product(plane->direction, position)) - sphere->radius - plane->offset;
   if (ball_distance >= 0)
@@ -130,15 +128,15 @@ static inline unsigned int collision_detector_sphere_and_half_space(struct Colli
   return 1;
 }
 
-static inline unsigned int collision_detector_sphere_and_sphere(struct CollisionSphere* one, struct CollisionSphere* two, struct CollisionData* data) {
+unsigned int collision_detector_sphere_and_sphere(struct CollisionSphere* one, struct CollisionSphere* two, struct CollisionData* data) {
   if (data->contacts_left <= 0)
     return 0;
 
   vec3 position_one;
-  vec3_copy(position_one, collision_primitive_get_axis(one, 3));
+  vec3_copy(position_one, collision_primitive_get_axis(&one->collision_primitive, 3));
 
   vec3 position_two;
-  vec3_copy(position_two, collision_primitive_get_axis(two, 3));
+  vec3_copy(position_two, collision_primitive_get_axis(&two->collision_primitive, 3));
 
   vec3 midline;
   vec3_copy(midline, vec3_sub(position_one, position_two));
@@ -161,7 +159,7 @@ static inline unsigned int collision_detector_sphere_and_sphere(struct Collision
   return 1;
 }
 
-static inline real penetration_on_axis(struct CollisionBox* one, struct CollisionBox* two, real* axis, real* to_centre) {
+real penetration_on_axis(struct CollisionBox* one, struct CollisionBox* two, real* axis, real* to_centre) {
   real one_project = transform_to_axis(one, axis);
   real two_project = transform_to_axis(two, axis);
   real distance = real_abs(vec3_magnitude(vec3_component_product(to_centre, axis)));
@@ -169,7 +167,7 @@ static inline real penetration_on_axis(struct CollisionBox* one, struct Collisio
   return one_project + two_project - distance;
 }
 
-static inline bool try_axis(struct CollisionBox* one, struct CollisionBox* two, real* axis, real* to_centre, unsigned int index, real* smallest_penetration, unsigned int* smallest_case) {
+bool try_axis(struct CollisionBox* one, struct CollisionBox* two, real* axis, real* to_centre, unsigned int index, real* smallest_penetration, unsigned int* smallest_case) {
   if (vec3_square_magnitude(axis) < 0.0001)
     return true;
 
@@ -190,28 +188,28 @@ void fill_point_face_box_box(struct CollisionBox* one, struct CollisionBox* two,
   struct Contact* contact = data->contacts;
 
   vec3 normal;
-  vec3_copy(normal, collision_primitive_get_axis(one, best));
+  vec3_copy(normal, collision_primitive_get_axis(&one->collision_primitive, best));
 
-  if (vec3_magnitude(vec3_mul(collision_primitive_get_axis(one, best), to_centre)) > 0)
+  if (vec3_magnitude(vec3_component_product(collision_primitive_get_axis(&one->collision_primitive, best), to_centre)) > 0)
     vec3_copy(normal, vec3_mul_scalar(normal, -1.0f));
 
   vec3 vertex;
   vec3_copy(vertex, two->half_size);
 
-  if (vec3_magnitude(vec3_mul(collision_primitive_get_axis(two, 0), normal)) < 0)
+  if (vec3_magnitude(vec3_component_product(collision_primitive_get_axis(&two->collision_primitive, 0), normal)) < 0)
     vertex[0] = -vertex[0];
-  if (vec3_magnitude(vec3_mul(collision_primitive_get_axis(two, 1), normal)) < 0)
+  if (vec3_magnitude(vec3_component_product(collision_primitive_get_axis(&two->collision_primitive, 1), normal)) < 0)
     vertex[1] = -vertex[1];
-  if (vec3_magnitude(vec3_mul(collision_primitive_get_axis(two, 2), normal)) < 0)
+  if (vec3_magnitude(vec3_component_product(collision_primitive_get_axis(&two->collision_primitive, 2), normal)) < 0)
     vertex[2] = -vertex[2];
 
   vec3_copy(contact->contact_normal, normal);
   contact->penetration = pen;
-  vec3_copy(contact->contact_point, vec3_mul(collision_primitive_get_transform(two), vertex));
+  vec3_copy(contact->contact_point, vec3_component_product(collision_primitive_get_transform(&two->collision_primitive), vertex));
   contact_set_body_data(contact, one->collision_primitive.body, two->collision_primitive.body, data->friction, data->restitution);
 }
 
-static inline real* contact_point(real* p_one, real* d_one, real one_size, real* p_two, real* d_two, real two_size, bool use_one) {
+real* contact_point(real* p_one, real* d_one, real one_size, real* p_two, real* d_two, real two_size, bool use_one) {
   vec3 to_st, c_one, c_two;
   real dp_sta_one, dp_sta_two, dp_one_two, sm_one, sm_two;
   real denom, mua, mub;
@@ -220,7 +218,7 @@ static inline real* contact_point(real* p_one, real* d_one, real one_size, real*
   sm_two = vec3_square_magnitude(d_two);
   dp_one_two = vec3_magnitude(vec3_component_product(d_two, d_one));
 
-  vec3_copt(to_st, vec3_sub(p_one, p_two));
+  vec3_copy(to_st, vec3_sub(p_one, p_two));
   dp_sta_one = vec3_magnitude(vec3_component_product(d_one, to_st));
   dp_sta_two = vec3_magnitude(vec3_component_product(d_two, to_st));
 
@@ -328,7 +326,7 @@ unsigned CollisionDetector::boxAndBox(const CollisionBox& one, const CollisionBo
 }
 #undef CHECK_OVERLAP*/
 
-static inline unsigned int collision_detector_box_and_point(struct CollisionBox* box, struct Vector3* point, struct CollisionData* data) {
+unsigned int collision_detector_box_and_point(struct CollisionBox* box, real* point, struct CollisionData* data) {
   vec3 rel_pt;
   vec3_copy(rel_pt, mat4_transform_inverse(box->collision_primitive.transform, point));
 
@@ -338,14 +336,14 @@ static inline unsigned int collision_detector_box_and_point(struct CollisionBox*
   if (min_depth < 0)
     return 0;
 
-  vec3_copy(normal, vec3_mul_scalar(collision_primitive_get_axis(box, 0), rel_pt[0] < 0 ? -1 : 1));
+  vec3_copy(normal, vec3_mul_scalar(collision_primitive_get_axis(&box->collision_primitive, 0), rel_pt[0] < 0 ? -1 : 1));
 
   real depth = box->half_size[1] - real_abs(rel_pt[1]);
   if (depth < 0)
     return 0;
   else if (depth < min_depth) {
     min_depth = depth;
-    vec3_copy(normal, vec3_mul_scalar(collision_primitive_get_axis(box, 1), rel_pt[1] < 0 ? -1 : 1));
+    vec3_copy(normal, vec3_mul_scalar(collision_primitive_get_axis(&box->collision_primitive, 1), rel_pt[1] < 0 ? -1 : 1));
   }
 
   depth = box->half_size[2] - real_abs(rel_pt[2]);
@@ -353,7 +351,7 @@ static inline unsigned int collision_detector_box_and_point(struct CollisionBox*
     return 0;
   else if (depth < min_depth) {
     min_depth = depth;
-    vec3_copy(normal, vec3_mul_scalar(collision_primitive_get_axis(box, 2), rel_pt[2] < 0 ? -1 : 1));
+    vec3_copy(normal, vec3_mul_scalar(collision_primitive_get_axis(&box->collision_primitive, 2), rel_pt[2] < 0 ? -1 : 1));
   }
 
   struct Contact* contact = data->contacts;
@@ -368,9 +366,9 @@ static inline unsigned int collision_detector_box_and_point(struct CollisionBox*
   return 1;
 }
 
-static inline unsigned int collision_detector_box_and_sphere(struct CollisionBox* box, struct CollisionSphere* sphere, struct CollisionData* data) {
+unsigned int collision_detector_box_and_sphere(struct CollisionBox* box, struct CollisionSphere* sphere, struct CollisionData* data) {
   vec3 centre;
-  vec3_copy(centre, collision_primitive_get_axis(sphere, 3));
+  vec3_copy(centre, collision_primitive_get_axis(&sphere->collision_primitive, 3));
 
   vec3 rel_centre;
   vec3_copy(rel_centre, mat4_transform_inverse(box->collision_primitive.transform, centre));
@@ -421,7 +419,7 @@ static inline unsigned int collision_detector_box_and_sphere(struct CollisionBox
   return 1;
 }
 
-static inline unsigned int collision_detector_box_and_half_space(struct CollisionBox* box, struct CollisionPlane* plane, struct CollisionData* data) {
+unsigned int collision_detector_box_and_half_space(struct CollisionBox* box, struct CollisionPlane* plane, struct CollisionData* data) {
   if (data->contacts_left <= 0)
     return 0;
 
@@ -435,9 +433,9 @@ static inline unsigned int collision_detector_box_and_half_space(struct Collisio
   for (unsigned int i = 0; i < 8; i++) {
     vec3 vertex_pos = {mults[i][0], mults[i][1], mults[i][2]};
     vec3_copy(vertex_pos, vec3_component_product(vertex_pos, box->half_size));
-    vec3_copy(vertex_pos, mat4_transform(box, vertex_pos));
+    vec3_copy(vertex_pos, mat4_transform(box->collision_primitive.transform, vertex_pos));
 
-    real vertex_distance = vec3_magnitude(vec3_mul(vertex_pos, plane->direction));
+    real vertex_distance = vec3_magnitude(vec3_component_product(vertex_pos, plane->direction));
 
     if (vertex_distance <= plane->offset) {
       vec3_copy(contact->contact_point, plane->direction);

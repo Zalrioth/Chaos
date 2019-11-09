@@ -5,6 +5,8 @@ set(CMAKE_C_STANDARD 11)
 
 set(CMAKE_DEBUG_POSTFIX "d")
 
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-function")
+
 file(GLOB_RECURSE chaos_SRC
         include/*.h
         src/*.c)

@@ -3,11 +3,36 @@
 #define CORE_H
 
 #include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "core/precision.h"
 
 // TODO: Look at generated assembly
+// TODO: Move out of header
 
 typedef real vec3[3];
+
+static inline real* vec3_default();
+static inline void vec3_copy(real* dest, real* source);
+static inline void vec3_clear(real* v1);
+static inline real* vec3_add(real* v1, real* v2);
+static inline real* vec3_sub(real* v1, real* v2);
+static inline real* vec3_mul_scalar(real* v1, real scalar);
+static inline real* vec3_cross_product(real* v1, real* v2);
+static inline real* vec3_component_product(real* v1, real* v2);
+static inline real vec3_scalar_product(real* v1, real* v2);
+static inline real* vec3_add_scaled_vector(real* v1, real* v2, real scale);
+static inline real vec3_magnitude(real* v1);
+static inline real vec3_square_magnitude(real* v1);
+static inline real* vec3_trim(real* v1, real size);
+static inline real* vec3_normalise(real* v1);
+static inline bool vec3_equals(real* v1, real* v2);
+static inline bool vec3_less_than(real* v1, real* v2);
+static inline bool vec3_greater_than(real* v1, real* v2);
+static inline bool vec3_less_than_equal(real* v1, real* v2);
+static inline bool vec3_greater_than_equal(real* v1, real* v2);
+static inline real* vec3_invert(real* v1);
 
 //TODO: Probably define
 static inline real* vec3_default() {
@@ -64,12 +89,14 @@ static inline real* vec3_trim(real* v1, real size) {
     real* temp = vec3_normalise(v1);
     return (vec3){temp[0] * size, temp[1] * size, temp[2] * size};
   }
+
+  return (vec3){v1[0], v1[1], v1[2]};
 }
 
 static inline real* vec3_normalise(real* v1) {
   real length = vec3_magnitude(v1);
   if (length > 0)
-    return vec3_mul(v1, ((real)1.0) / length);
+    return vec3_mul_scalar(v1, ((real)1.0) / length);
   return v1;
 }
 
@@ -98,6 +125,14 @@ static inline real* vec3_invert(real* v1) {
 }
 
 typedef real quaternion[4];
+
+static inline real* quaternion_default();
+static inline void quaternion_copy(real* dest, real* source);
+static inline real* quaternion_set(real* q1, real r, real i, real j, real k);
+static inline real* quaternion_normalise(real* q1);
+static inline real* quaternion_mul(real* q1, real* q2);
+static inline real* quaternion_add_scaled_vector(real* q1, real* v1, real scale);
+static inline real* quaternion_rotate_by_vector(real* q1, real* v1);
 
 // TODO: Probably define
 static inline real* quaternion_default() {
@@ -139,6 +174,20 @@ static inline real* quaternion_rotate_by_vector(real* q1, real* v1) {
 }
 
 typedef real mat4[12];
+
+static inline real* mat4_default();
+static inline void mat4_copy(real* dest, real* source);
+static inline real* mat4_set_diagonal(real* m1, real a, real b, real c);
+static inline real* mat4_mul_mat4(real* m1, real* m2);
+static inline real* mat4_transform(real* m1, real* v1);
+static inline real mat4_determinant(real* m1);
+static inline real* mat4_inverse(real* m1);
+static inline real* mat4_transform_direction(real* m1, real* v1);
+static inline real* mat4_transform_inverse_direction(real* m1, real* v1);
+static inline real* mat4_transform_inverse(real* m1, real* v1);
+static inline real* mat4_get_axis_vector(real* m1, int i);
+static inline real* mat4_set_orientation_and_pos(real* m1, real* q1, real* v1);
+static inline void mat4_fill_gl_array(real* m1, float* array);
 
 // TODO: Probably define
 static inline real* mat4_default() {
@@ -269,6 +318,26 @@ static inline void mat4_fill_gl_array(real* m1, float* array) {
 }
 
 typedef real mat3[9];
+
+static inline real* mat3_default();
+static inline void mat3_copy(real* dest, real* source);
+static inline real* mat3_set_components(real* v1, real* v2, real* v3);
+static inline real* mat3_set(real c0, real c1, real c2, real c3, real c4, real c5, real c6, real c7, real c8);
+static inline real* mat3_set_diagonal(real* m1, real a, real b, real c);
+static inline real* mat_set_inertia_tensor_coeffs(real* m1, real ix, real iy, real iz, real ixy, real ixz, real iyz);
+static inline real* mat3_set_block_intertia_tensor(real* m1, real* v1, real mass);
+static inline real* mat3_set_skew_symmetric(real* m1, real* v1);
+static inline real* mat3_transform(real* m1, real* v1);
+static inline real* mat3_transform_transpose(real* m1, real* v1);
+static inline real* mat3_get_row_vector(real* m1, int i);
+static inline real* mat3_get_axis_vector(real* m1, int i);
+static inline real* mat3_inverse(real* m1);
+static inline real* mat3_transpose(real* m1);
+static inline real* mat3_mul_mat3(real* m1, real* m2);
+static inline real* mat3_mul_scalar(real* m1, real scalar);
+static inline real* mat3_add_mat3(real* m1, real* m2);
+static inline real* mat3_set_orientation(real* q1);
+static inline real* mat3_liner_interpolate(real* m1, real* m2, real prop);
 
 // TODO: Probably define
 static inline real* mat3_default() {

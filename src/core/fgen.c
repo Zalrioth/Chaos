@@ -11,14 +11,6 @@ void gravity_update_force(struct Gravity* gravity, struct RigidBody* body, real 
   rigid_body_add_force(body, vec3_mul_scalar(gravity->gravity_direction, rigid_body_get_mass(body)));
 }
 
-struct Spring {
-  vec3 connection_point;
-  vec3 other_connection_point;
-  struct RigidBody* other;
-  real spring_constant;
-  real rest_length;
-};
-
 void spring_init(struct Spring* spring, real* local_connection_point, struct RigidBody* other, vec3 other_connection_point, real spring_constant, real rest_length) {
   memcpy(spring->connection_point, local_connection_point, sizeof(vec3));
   memcpy(spring->other_connection_point, other_connection_point, sizeof(vec3));
@@ -67,7 +59,7 @@ void aero_update_force_from_tensor(struct Aero* aero, struct RigidBody* body, re
 
 void aero_control_init(struct AeroControl* aero_control, real* base, real* min, real* max, real* position, real* wind_speed) {
   aero_control = calloc(1, sizeof(struct Aero));
-  aero_init(aero_control->aero, base, position, wind_speed);
+  aero_init(&aero_control->aero, base, position, wind_speed);
 
   mat3_copy(aero_control->min_tensor, min);
   mat3_copy(aero_control->max_tensor, max);
@@ -75,7 +67,7 @@ void aero_control_init(struct AeroControl* aero_control, real* base, real* min, 
 }
 
 void aero_control_delete(struct AeroControl* aero_control) {
-  free(aero_control->aero);
+  free(&aero_control->aero);
 }
 
 real* aero_control_get_tensor(struct AeroControl* aero_control) {
@@ -84,20 +76,20 @@ real* aero_control_get_tensor(struct AeroControl* aero_control) {
   else if (aero_control->control_setting >= 1.0f)
     return aero_control->max_tensor;
   else if (aero_control->control_setting < 0) {
-    return mat3_liner_interpolate(aero_control->min_tensor, aero_control->aero->tensor, aero_control->control_setting + 1.0f);
+    return mat3_liner_interpolate(aero_control->min_tensor, aero_control->aero.tensor, aero_control->control_setting + 1.0f);
   } else if (aero_control->control_setting > 0) {
-    return mat3_liner_interpolate(aero_control->aero->tensor, aero_control->max_tensor, aero_control->control_setting);
+    return mat3_liner_interpolate(aero_control->aero.tensor, aero_control->max_tensor, aero_control->control_setting);
   } else
-    return aero_control->aero->tensor;
+    return aero_control->aero.tensor;
 }
 
 void aero_control_set_control(struct AeroControl* aero_control, real value) {
   aero_control->control_setting = value;
 }
 
-void aero_update_force(struct AeroControl* aero_control, struct RigidBody* body, real duration) {
-  real* tensor = aero_control_get_tensor(aero_control->aero);
-  aero_update_force_from_tensor(aero_control->aero, body, duration, aero_control->aero->tensor);
+void aero_control_update_force(struct AeroControl* aero_control, struct RigidBody* body, real duration) {
+  real* tensor = aero_control_get_tensor(aero_control);
+  aero_update_force_from_tensor(&aero_control->aero, body, duration, tensor);
 }
 
 // Note: Default liquid density is 1000.0f
@@ -129,10 +121,10 @@ void buoyancy_update_force(struct Buoyancy* buoyancy, struct RigidBody* body, re
 }
 
 void force_registry_update_forces(struct ForceRegistry* force_registry, real duration) {
-  for (int iterate_num = 0; iterate_num < force_vector_size(force_registry); iterate_num++) {
+  for (int iterate_num = 0; iterate_num < force_vector_size(&force_registry->registrations); iterate_num++) {
     struct ForceRegistration* force_registration = (struct ForceRegistration*)(force_registry + (iterate_num * sizeof(struct ForceRegistration)));
 
-    force_registration->fg->update_force(force_registration->fg->force, force_registration->body, duration);
+    force_registration->fg->update_force(&force_registration->fg->force, force_registration->body, duration);
 
     /*switch (force_registration->fg->force_type) {
       case GRAVITY:
@@ -154,20 +146,20 @@ void force_registry_update_forces(struct ForceRegistry* force_registry, real dur
 }
 
 void force_registry_add(struct ForceRegistry* force_registry, struct RigidBody* body, struct ForceGenerator* fg) {
-  force_vector_push_back(force_registry, &(struct ForceRegistration){body, fg});
+  force_vector_push_back(&force_registry->registrations, &(struct ForceRegistration){body, fg});
 }
 
 void force_registry_remove(struct ForceRegistry* force_registry, struct RigidBody* body, struct ForceGenerator* fg) {
-  for (int iterate_num = 0; iterate_num < force_vector_size(force_registry); iterate_num++) {
+  for (int iterate_num = 0; iterate_num < force_vector_size(&force_registry->registrations); iterate_num++) {
     struct ForceRegistration* force_registration = (struct ForceRegistration*)(force_registry + (iterate_num * sizeof(struct ForceRegistration)));
 
     if (force_registration->body == body && force_registration->fg == fg) {
-      force_vector_remove(force_registry, iterate_num);
+      force_vector_remove(&force_registry->registrations, iterate_num);
       return;
     }
   }
 }
 
 void force_registry_clear(struct ForceRegistry* force_registry) {
-  force_vector_clear(force_registry);
+  force_vector_clear(&force_registry->registrations);
 }

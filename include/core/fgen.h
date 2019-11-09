@@ -67,7 +67,7 @@ void aero_control_init(struct AeroControl* aero_control, real* base, real* min, 
 void aero_control_delete(struct AeroControl* aero_control);
 real* aero_control_get_tensor(struct AeroControl* aero_control);
 void aero_control_set_control(struct AeroControl* aero_control, real value);
-void aero_update_force(struct AeroControl* aero_control, struct RigidBody* body, real duration);
+void aero_control_update_force(struct AeroControl* aero_control, struct RigidBody* body, real duration);
 
 struct AngledAero {
   struct Aero aero;
@@ -129,6 +129,16 @@ struct ForceVector {
   void* items;
 };
 
+// TODO: Move out of header
+static inline void force_vector_init(struct ForceVector* vector, size_t memory_size);
+static inline void force_vector_delete(struct ForceVector* vector);
+static inline size_t force_vector_size(struct ForceVector* vector);
+static inline void force_vector_resize(struct ForceVector* vector, size_t capacity);
+static inline void force_vector_push_back(struct ForceVector* vector, void* item);
+static inline void* force_vector_get(struct ForceVector* vector, size_t index);
+static inline void force_vector_remove(struct ForceVector* vector, size_t index);
+static inline void force_vector_clear(struct ForceVector* vector);
+
 static inline void force_vector_init(struct ForceVector* vector, size_t memory_size) {
   vector->size = 0;
   vector->capacity = FORCE_VECTOR_INIT_CAPACITY;
@@ -154,7 +164,7 @@ static inline void force_vector_resize(struct ForceVector* vector, size_t capaci
 
 static inline void force_vector_push_back(struct ForceVector* vector, void* item) {
   if (vector->capacity == vector->size)
-    vector_resize(vector, vector->capacity * FORCE_VECTOR_RESIZE_FACTOR);
+    force_vector_resize(vector, vector->capacity * FORCE_VECTOR_RESIZE_FACTOR);
 
   memcpy((char*)vector->items + (sizeof(struct ForceRegistration) * vector->size), item, sizeof(struct ForceRegistration));
   vector->size++;
@@ -174,13 +184,13 @@ static inline void force_vector_remove(struct ForceVector* vector, size_t index)
   vector->size--;
 
   if (vector->size > 0 && vector->size == vector->capacity / 4)
-    vector_resize(vector, vector->capacity / 2);
+    force_vector_resize(vector, vector->capacity / 2);
 }
 
 static inline void force_vector_clear(struct ForceVector* vector) {
   vector->size = 0;
   vector->capacity = FORCE_VECTOR_INIT_CAPACITY;
-  vector_resize(vector, FORCE_VECTOR_INIT_CAPACITY);
+  force_vector_resize(vector, FORCE_VECTOR_INIT_CAPACITY);
 }
 
 //////////////////////////////////////////////////////

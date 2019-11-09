@@ -1,28 +1,28 @@
 #include "core/contacts.h"
 
-static inline void contact_set_body_data(struct Contact* contact, struct RigidBody* one, struct RigidBody* two, real friction, real restitution) {
+void contact_set_body_data(struct Contact* contact, struct RigidBody* one, struct RigidBody* two, real friction, real restitution) {
   contact->body[0] = one;
   contact->body[1] = two;
   contact->friction = friction;
   contact->restitution = restitution;
 }
 
-static inline void contact_match_awake_state(struct Contact* contact) {
+void contact_match_awake_state(struct Contact* contact) {
   if (!contact->body[1])
     return;
 
-  bool body0_awake = body_get_awake(contact->body[0]);
-  bool body1_awake = body_get_awake(contact->body[1]);
+  bool body0_awake = rigid_body_get_is_awake(contact->body[0]);
+  bool body1_awake = rigid_body_get_is_awake(contact->body[1]);
 
   if (body0_awake ^ body1_awake) {
     if (body0_awake)
-      body_set_awake(contact->body[1], true);
+      rigid_body_set_awake(contact->body[1], true);
     else
-      body_set_awake(contact->body[0], true);
+      rigid_body_set_awake(contact->body[0], true);
   }
 }
 
-static inline void contact_swap_bodies(struct Contact* contact) {
+void contact_swap_bodies(struct Contact* contact) {
   vec3_copy(contact->contact_normal, vec3_invert(contact->contact_normal));
 
   struct RigidBody* temp = contact->body[0];
@@ -30,7 +30,7 @@ static inline void contact_swap_bodies(struct Contact* contact) {
   contact->body[1] = temp;
 }
 
-static inline void contact_calculate_contact_basis(struct Contact* contact) {
+void contact_calculate_contact_basis(struct Contact* contact) {
   vec3 contact_tangent[2];
 
   real* contact_normal = contact->contact_normal;
@@ -59,10 +59,10 @@ static inline void contact_calculate_contact_basis(struct Contact* contact) {
   mat3_copy(contact->contact_to_world, mat3_set_components(contact_normal, contact_tangent[0], contact_tangent[1]));
 }
 
-static inline real* contact_calculate_local_velocity(struct Contact* contact, unsigned int body_index, real duration) {
+real* contact_calculate_local_velocity(struct Contact* contact, unsigned int body_index, real duration) {
   struct RigidBody* this_body = contact->body[body_index];
 
-  real* velocity;
+  vec3 velocity;
   vec3_copy(velocity, vec3_cross_product(rigid_body_get_rotation(this_body), contact->relative_contact_position[body_index]));
   vec3_copy(velocity, vec3_add(velocity, rigid_body_get_velocity(this_body)));
 
@@ -75,26 +75,26 @@ static inline real* contact_calculate_local_velocity(struct Contact* contact, un
   acc_velocity[0] = 0;
 
   vec3_copy(contact_velocity, vec3_add(contact_velocity, acc_velocity));
-  return contact_velocity;
+  return (vec3){contact_velocity[0], contact_velocity[1], contact_velocity[2]};
 }
 
-static inline void contact_calculate_desired_delta_velocity(struct Contact* contact, real duration) {
+void contact_calculate_desired_delta_velocity(struct Contact* contact, real duration) {
   real velocity_from_acc = 0;
 
   if (rigid_body_get_is_awake(contact->body[0]))
-    velocity_from_acc += vec3_magnitude(vec3_mul(vec3_mul_scalar(rigid_body_get_last_frame_acceleration(contact->body[0]), duration), contact->contact_normal));
+    velocity_from_acc += vec3_magnitude(vec3_component_product(vec3_mul_scalar(rigid_body_get_last_frame_acceleration(contact->body[0]), duration), contact->contact_normal));
 
   if (contact->body[1] && rigid_body_get_is_awake(contact->body[1]))
-    velocity_from_acc -= vec3_magnitude(vec3_mul(vec3_mul_scalar(rigid_body_get_last_frame_acceleration(contact->body[1]), duration), contact->contact_normal));
+    velocity_from_acc -= vec3_magnitude(vec3_component_product(vec3_mul_scalar(rigid_body_get_last_frame_acceleration(contact->body[1]), duration), contact->contact_normal));
 
   real this_restitution = contact->restitution;
-  if (real_abs(contact->contact_velocity[0]) < velocityLimit)
+  if (real_abs(contact->contact_velocity[0]) < velocity_limit)
     this_restitution = (real)0.0f;
 
   contact->desired_delta_velocity = -contact->contact_velocity[0] - this_restitution * (contact->contact_velocity[0] - velocity_from_acc);
 }
 
-static inline contact_calculate_internals(struct Contact* contact, real duration) {
+void contact_calculate_internals(struct Contact* contact, real duration) {
   if (!contact->body[0])
     contact_swap_bodies(contact);
 
@@ -112,7 +112,7 @@ static inline contact_calculate_internals(struct Contact* contact, real duration
 }
 
 // NOTE: Watch out for this typedef pointer
-static inline void contact_apply_velocity_change(struct Contact* contact, vec3* velocity_change, vec3* rotation_change) {
+void contact_apply_velocity_change(struct Contact* contact, vec3* velocity_change, vec3* rotation_change) {
   mat3 inverse_inertia_tensor[2];
   mat3_copy(inverse_inertia_tensor[0], rigid_body_get_inverse_inertia_tensor_world(contact->body[0]));
   if (contact->body[1])
@@ -144,14 +144,14 @@ static inline void contact_apply_velocity_change(struct Contact* contact, vec3* 
 
     vec3_copy(rotation_change[1], mat3_transform(inverse_inertia_tensor[1], impulsive_torque));
     vec3_clear(velocity_change[1]);
-    vec3_clone(velocity_change[1], vec3_add_scaled_vector(velocity_change[1], impulse, -rigid_body_get_inverse_mass(contact->body[1])));
+    vec3_copy(velocity_change[1], vec3_add_scaled_vector(velocity_change[1], impulse, -rigid_body_get_inverse_mass(contact->body[1])));
 
     rigid_body_add_velocity(contact->body[1], velocity_change[1]);
     rigid_body_add_rotation(contact->body[1], rotation_change[1]);
   }
 }
 
-static inline real* contact_calculate_frictionless_impulse(struct Contact* contact, mat3* inverse_inertia_tensor) {
+real* contact_calculate_frictionless_impulse(struct Contact* contact, mat3* inverse_inertia_tensor) {
   vec3 delta_vel_world;
   vec3_copy(delta_vel_world, vec3_cross_product(contact->relative_contact_position[0], contact->contact_normal));
   vec3_copy(delta_vel_world, mat3_transform(inverse_inertia_tensor[0], delta_vel_world));
@@ -171,7 +171,7 @@ static inline real* contact_calculate_frictionless_impulse(struct Contact* conta
   return (vec3){contact->desired_delta_velocity / delta_velocity, 0, 0};
 }
 
-static inline real* contact_calculate_friction_impulse(struct Contact* contact, mat3* inverse_inertia_tensor) {
+real* contact_calculate_friction_impulse(struct Contact* contact, mat3* inverse_inertia_tensor) {
   vec3 impulse_contact;
   real inverse_mass = rigid_body_get_inverse_mass(contact->body[0]);
 
@@ -227,7 +227,7 @@ static inline real* contact_calculate_friction_impulse(struct Contact* contact, 
   return (vec3){impulse_contact[0], impulse_contact[1], impulse_contact[0]};
 }
 
-static inline void contact_apply_position_change(struct Contact* contact, vec3* linear_change, vec3* angular_change, real penetration) {
+void contact_apply_position_change(struct Contact* contact, vec3* linear_change, vec3* angular_change, real penetration) {
   real angular_limit = (real)0.2f;
   real angular_move[2];
   real linear_move[2];
@@ -293,7 +293,7 @@ static inline void contact_apply_position_change(struct Contact* contact, vec3* 
       rigid_body_set_position(contact->body[i], pos);
 
       quaternion q;
-      quaternion_copy(q, rigi_body_get_orientation(contact->body[i]));
+      quaternion_copy(q, rigid_body_get_orientation(contact->body[i]));
       quaternion_add_scaled_vector(q, angular_change[i], ((real)1.0));
       rigid_body_set_orientation(contact->body[i], q);
 
@@ -302,26 +302,26 @@ static inline void contact_apply_position_change(struct Contact* contact, vec3* 
     }
 }
 
-static inline void contact_resolver_init(struct ContactResolver* contact_resolver, unsigned int velocity_iterations, unsigned int position_iterations, real velocity_epsilon, real position_epsilon) {
-  contact_resolbver_set_iterations(contact_resolver, velocity_iterations, position_iterations);
-  contact_resolbver_set_epsilon(contact_resolver, velocity_epsilon, position_epsilon);
+void contact_resolver_init(struct ContactResolver* contact_resolver, unsigned int velocity_iterations, unsigned int position_iterations, real velocity_epsilon, real position_epsilon) {
+  contact_resolver_set_iterations(contact_resolver, velocity_iterations, position_iterations);
+  contact_resolver_set_epsilon(contact_resolver, velocity_epsilon, position_epsilon);
 }
 
-static inline bool contact_resolver_is_valid(struct ContactResolver* contact_resolver) {
+bool contact_resolver_is_valid(struct ContactResolver* contact_resolver) {
   return (contact_resolver->velocity_iterations > 0) && (contact_resolver->position_iterations > 0) && (contact_resolver->velocity_epsilon >= 0.0f) && (contact_resolver->position_epsilon >= 0.0f);
 }
 
-static inline void contact_resolver_set_iterations(struct ContactResolver* contact_resolver, unsigned int velocity_iterations, unsigned int position_iterations) {
+void contact_resolver_set_iterations(struct ContactResolver* contact_resolver, unsigned int velocity_iterations, unsigned int position_iterations) {
   contact_resolver->velocity_iterations = velocity_iterations;
   contact_resolver->position_iterations = position_iterations;
 }
 
-static inline void contact_resolver_set_epsilon(struct ContactResolver* contact_resolver, real velocity_epsilon, real position_epsilon) {
+void contact_resolver_set_epsilon(struct ContactResolver* contact_resolver, real velocity_epsilon, real position_epsilon) {
   contact_resolver->velocity_epsilon = velocity_epsilon;
   contact_resolver->position_epsilon = position_epsilon;
 }
 
-static inline void contact_resolver_resolve_contacts(struct ContactResolver* contact_resolver, struct Contact* contacts, unsigned int num_contacts, real duration) {
+void contact_resolver_resolve_contacts(struct ContactResolver* contact_resolver, struct Contact* contacts, unsigned int num_contacts, real duration) {
   if (num_contacts == 0)
     return;
   if (!contact_resolver_is_valid(contact_resolver))
@@ -332,14 +332,14 @@ static inline void contact_resolver_resolve_contacts(struct ContactResolver* con
   contact_resolver_adjust_velocities(contact_resolver, contacts, num_contacts, duration);
 }
 
-static inline void contact_resolver_prepare_contacts(struct ContactResolver* contact_resolver, struct Contact* contacts, unsigned int num_contacts, real duration) {
+void contact_resolver_prepare_contacts(struct ContactResolver* contact_resolver, struct Contact* contacts, unsigned int num_contacts, real duration) {
   struct Contact* last_contact = contacts + num_contacts;
   for (struct Contact* contact = contacts; contact < last_contact; contact++) {
     contact_calculate_internals(contact, duration);
   }
 }
 
-static inline void contact_resolver_adjust_velocities(struct ContactResolver* contact_resolver, struct Contact* contact, unsigned num_contacts, real duration) {
+void contact_resolver_adjust_velocities(struct ContactResolver* contact_resolver, struct Contact* contact, unsigned num_contacts, real duration) {
   vec3 velocity_change[2], rotation_change[2];
   vec3 delta_vel;
 
@@ -376,7 +376,7 @@ static inline void contact_resolver_adjust_velocities(struct ContactResolver* co
   }
 }
 
-static inline void contact_resolver_adjust_positions(struct ContactResolver* contact_resolver, struct Contact* contact, unsigned num_contacts, real duration) {
+void contact_resolver_adjust_positions(struct ContactResolver* contact_resolver, struct Contact* contact, unsigned num_contacts, real duration) {
   unsigned int i, index;
   vec3 linear_change[2], angular_change[2];
   real max;

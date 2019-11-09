@@ -3,6 +3,7 @@
 #define PRECISION_H
 
 #include <float.h>
+#include <math.h>
 
 #if 1
 #define SINGLE_PRECISION

@@ -1,8 +1,8 @@
-#include <core/collidecoarse.h>
+#include "core/collidecoarse.h"
 
 static inline void bounding_sphere_init(struct BoundingSphere* bounding_sphere, real* centre, real radius) {
   vec3_copy(bounding_sphere->centre, centre);
-  radius = radius;
+  bounding_sphere->radius = radius;
 }
 
 static inline void bounding_sphere_init_two(struct BoundingSphere* bounding_sphere, struct BoundingSphere* one, struct BoundingSphere* two) {
@@ -94,7 +94,7 @@ static inline bool bvh_node_is_leaf(struct BVHNode* bvh_node) {
 }
 
 static inline bool bvh_node_overlaps(struct BVHNode* bvh_node, struct BVHNode* other) {
-  bounding_sphere_overlaps(bvh_node->volume, other->volume);
+  return bounding_sphere_overlaps(bvh_node->volume, other->volume);
 }
 
 static inline void bvh_node_insert(struct BVHNode* bvh_node, struct RigidBody* new_body, struct BoundingSphere* new_volume) {
@@ -145,7 +145,7 @@ static inline unsigned int bvh_node_get_potential_contacts_with(struct BVHNode* 
     return 1;
   }
 
-  if (bvh_node_is_leaf(other) || (!bvh_node_is_leaf(bvh_node) && bounding_sphere_get_size(bvh_node->volume) >= othbounding_sphere_get_size(other->volume))) {
+  if (bvh_node_is_leaf(other) || (!bvh_node_is_leaf(bvh_node) && bounding_sphere_get_size(bvh_node->volume) >= bounding_sphere_get_size(other->volume))) {
     unsigned int count = bvh_node_get_potential_contacts_with(bvh_node->children[0], other, contacts, limit);
 
     if (limit > count)
