@@ -113,7 +113,7 @@ union Force {
 struct ForceGenerator {
   enum ForceType force_type;
   union Force force;
-  void (*update_force)(void* force, struct RigidBody*, real);
+  void (*update_force)(void*, struct RigidBody*, real);
 };
 
 struct ForceRegistration {
