@@ -9,6 +9,6 @@ file(GLOB_RECURSE chaos_SRC
         include/*.h
         src/*.c)
 
-add_library(Chaos STATIC ${chaos_SRC})
+add_library(chaos STATIC ${chaos_SRC})
 set(includeList include)
-target_include_directories(Chaos PUBLIC ${includeList})
+target_include_directories(chaos PUBLIC ${includeList})
