@@ -1,4 +1,4 @@
-#include "core/random.h"
+#include "chaos/core/random.h"
 
 void random_seed(struct Random* random, unsigned int seed) {
   if (seed == 0)

@@ -3,8 +3,8 @@
 #define WORLD_H
 
 #include <stdlib.h>
-#include "core/body.h"
-#include "core/contacts.h"
+#include "chaos/core/body.h"
+#include "chaos/core/contacts.h"
 
 // TODO: Add this
 //const static real velocityLimit = (real)0.25f;

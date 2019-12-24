@@ -2,7 +2,7 @@
 #ifndef JOINTS_H
 #define JOINTS_H
 
-#include "core/contacts.h"
+#include "chaos/core/contacts.h"
 
 struct Joint {
   struct ContactGenerator contact_generator;

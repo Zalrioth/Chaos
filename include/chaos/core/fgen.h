@@ -3,7 +3,7 @@
 #define FGEN_H
 
 #include <stdlib.h>
-#include "core/body.h"
+#include "chaos/core/body.h"
 
 #define FORCE_VECTOR_INIT_CAPACITY 4
 #define FORCE_VECTOR_RESIZE_FACTOR 2

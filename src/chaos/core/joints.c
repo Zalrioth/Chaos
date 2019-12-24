@@ -1,4 +1,4 @@
-#include "core/joints.h"
+#include "chaos/core/joints.h"
 
 static inline unsigned int joint_add_contact(struct Joint* joint, struct Contact* contact, unsigned limit) {
   vec3 a_pos_world;

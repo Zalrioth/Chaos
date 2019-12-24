@@ -1,4 +1,4 @@
-#include "core/body.h"
+#include "chaos/core/body.h"
 
 void rigid_body_transform_inertia_tensor(real* iit_world, real* q, real* iit_body, real* rotmat) {
   real t4 = rotmat[0] * iit_body[0] + rotmat[1] * iit_body[3] + rotmat[2] * iit_body[6];

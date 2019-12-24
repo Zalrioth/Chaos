@@ -1,0 +1,8 @@
+#include "chaos/core/body.h"
+#include "chaos/core/collidefine.h"
+#include "chaos/core/contacts.h"
+#include "chaos/core/core.h"
+#include "chaos/core/fgen.h"
+#include "chaos/core/joints.h"
+#include "chaos/core/precision.h"
+#include "chaos/core/random.h"

@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "core/precision.h"
+#include "chaos/core/precision.h"
 
 // TODO: Look at generated assembly
 // TODO: Move out of header

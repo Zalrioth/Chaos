@@ -3,7 +3,7 @@
 #define BODY_H
 
 #include <memory.h>
-#include "core/core.h"
+#include "chaos/core/core.h"
 
 // TODO: sleep_epsilon will need to changed
 static real sleep_epsilon = ((real)0.3);

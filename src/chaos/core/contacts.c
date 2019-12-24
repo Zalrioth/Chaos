@@ -1,4 +1,4 @@
-#include "core/contacts.h"
+#include "chaos/core/contacts.h"
 
 void contact_set_body_data(struct Contact* contact, struct RigidBody* one, struct RigidBody* two, real friction, real restitution) {
   contact->body[0] = one;

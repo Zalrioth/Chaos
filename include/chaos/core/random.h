@@ -3,7 +3,7 @@
 #define RANDOM_H
 
 #include <time.h>
-#include "core/core.h"
+#include "chaos/core/core.h"
 
 struct Random {
   int p1, p2;

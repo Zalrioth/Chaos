@@ -6,8 +6,8 @@ set(CMAKE_DEBUG_POSTFIX "d")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-function")
 
 file(GLOB_RECURSE chaos_SRC
-        include/*.h
-        src/*.c)
+        include/chaos/*.h
+        src/chaos/*.c)
 
 add_library(chaos STATIC ${chaos_SRC})
 set(includeList include)

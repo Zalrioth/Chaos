@@ -1,4 +1,4 @@
-#include "core/collidefine.h"
+#include "chaos/core/collidefine.h"
 
 real transform_to_axis(struct CollisionBox* box, real* axis) {
   return box->half_size[0] * real_abs(vec3_magnitude(vec3_component_product(axis, collision_primitive_get_axis(&box->collision_primitive, 0)))) + box->half_size[1] * real_abs(vec3_magnitude(vec3_component_product(axis, collision_primitive_get_axis(&box->collision_primitive, 1)))) + box->half_size[2] * real_abs(vec3_magnitude(vec3_component_product(axis, collision_primitive_get_axis(&box->collision_primitive, 2))));

@@ -3,7 +3,7 @@
 #define COLLIDE_FINE_H
 
 #include <memory.h>
-#include "core/contacts.h"
+#include "chaos/core/contacts.h"
 
 struct CollisionPrimitive {
   struct RigidBody* body;

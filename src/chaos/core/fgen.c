@@ -1,4 +1,4 @@
-#include "core/fgen.h"
+#include "chaos/core/fgen.h"
 
 void gravity_init(struct Gravity* gravity, real* gravity_direction) {
   memcpy(gravity->gravity_direction, gravity_direction, sizeof(vec3));

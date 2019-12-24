@@ -4,7 +4,7 @@
 
 #include <assert.h>
 #include <memory.h>
-#include "core/body.h"
+#include "chaos/core/body.h"
 
 // TODO: velocity_limit will need to changed
 static real velocity_limit = (real)0.25f;

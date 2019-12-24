@@ -1,5 +1,5 @@
 
-#include "core/world.h"
+#include "chaos/core/world.h"
 
 static inline void world_init(struct World* world, unsigned int max_contacts, unsigned int iterations) {
   world->first_body = NULL;

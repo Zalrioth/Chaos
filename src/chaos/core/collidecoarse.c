@@ -1,4 +1,4 @@
-#include "core/collidecoarse.h"
+#include "chaos/core/collidecoarse.h"
 
 static inline void bounding_sphere_init(struct BoundingSphere* bounding_sphere, real* centre, real radius) {
   vec3_copy(bounding_sphere->centre, centre);

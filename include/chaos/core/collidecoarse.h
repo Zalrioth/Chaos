@@ -2,7 +2,7 @@
 #define COLLIDE_COARSE_H
 
 #include <stddef.h>
-#include "core/contacts.h"
+#include "chaos/core/contacts.h"
 
 struct BoundingSphere {
   vec3 centre;
