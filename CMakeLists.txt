@@ -10,5 +10,7 @@ file(GLOB_RECURSE chaos_SRC
         src/chaos/*.c)
 
 add_library(chaos STATIC ${chaos_SRC})
-set(includeList include)
+set(includeList 
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/lib/uber-math/include)
 target_include_directories(chaos PUBLIC ${includeList})

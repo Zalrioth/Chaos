@@ -35,11 +35,11 @@ unsigned int random_bits(struct Random* random) {
 }
 
 #ifdef SINGLE_PRECISION
-real random_random_real(struct Random* random) {
+float random_random_float(struct Random* random) {
   unsigned bits = random_bits(random);
 
   union {
-    real value;
+    float value;
     unsigned int word;
   } convert;
 
@@ -48,11 +48,11 @@ real random_random_real(struct Random* random) {
   return convert.value - 1.0f;
 }
 #else
-real random_random_real(struct Random* random) {
+float random_random_float(struct Random* random) {
   unsigned bits = random_bits(random);
 
   union {
-    real value;
+    float value;
     unsigned words[2];
   } convert;
 
@@ -63,40 +63,40 @@ real random_random_real(struct Random* random) {
 }
 #endif
 
-real random_real_min_max(struct Random* random, real min, real max) {
-  return random_random_real(random) * (max - min) + min;
+float random_float_min_max(struct Random* random, float min, float max) {
+  return random_random_float(random) * (max - min) + min;
 }
 
-real random_real_scale(struct Random* random, real scale) {
-  return random_random_real(random) * scale;
+float random_float_scale(struct Random* random, float scale) {
+  return random_random_float(random) * scale;
 }
 
 unsigned int random_int(struct Random* random, unsigned int max) {
   return random_bits(random) % max;
 }
 
-real random_binomial_scale(struct Random* random, real scale) {
-  return (random_random_real(random) - random_random_real(random)) * scale;
+float random_binomial_scale(struct Random* random, float scale) {
+  return (random_random_float(random) - random_random_float(random)) * scale;
 }
 
-real* random_quaternion(struct Random* random) {
-  quaternion q = {random_random_real(random), random_random_real(random), random_random_real(random), random_random_real(random)};
-  quaternion_copy(q, quaternion_normalise(q));
-  return (quaternion){q[0], q[1], q[2], q[3]};
+quat random_quaternion(struct Random* random) {
+  quat q = (quat){.data[0] = random_random_float(random), .data[1] = random_random_float(random), .data[2] = random_random_float(random), .data[3] = random_random_float(random)};
+  q = quaternion_normalise(q);
+  return (quat){.data[0] = q.data[0], .data[1] = q.data[1], .data[2] = q.data[2], .data[3] = q.data[3]};
 }
 
-real* random_vector_scale(struct Random* random, real scale) {
-  return (vec3){random_binomial_scale(random, scale), random_binomial_scale(random, scale), random_binomial_scale(random, scale)};
+vec3 random_vector_scale(struct Random* random, float scale) {
+  return (vec3){.data[0] = random_binomial_scale(random, scale), .data[1] = random_binomial_scale(random, scale), .data[2] = random_binomial_scale(random, scale)};
 }
 
-real* random_vector_xz(struct Random* random, real scale) {
-  return (vec3){random_binomial_scale(random, scale), 0, random_binomial_scale(random, scale)};
+vec3 random_vector_xz(struct Random* random, float scale) {
+  return (vec3){.data[0] = random_binomial_scale(random, scale), .data[1] = 0, .data[2] = random_binomial_scale(random, scale)};
 }
 
-real* random_vector_scale_xyz(struct Random* random, real* scale) {
-  return (vec3){random_binomial_scale(random, scale[0]), random_binomial_scale(random, scale[1]), random_binomial_scale(random, scale[2])};
+vec3 random_vector_scale_xyz(struct Random* random, float* scale) {
+  return (vec3){.data[0] = random_binomial_scale(random, scale[0]), .data[1] = random_binomial_scale(random, scale[1]), .data[2] = random_binomial_scale(random, scale[2])};
 }
 
-real* random_vector_min_max(struct Random* random, real* min, real* max) {
-  return (vec3){random_real_min_max(random, min[0], max[0]), random_real_min_max(random, min[1], max[1]), random_real_min_max(random, min[2], max[2])};
+vec3 random_vector_min_max(struct Random* random, float* min, float* max) {
+  return (vec3){.data[0] = random_float_min_max(random, min[0], max[0]), .data[1] = random_float_min_max(random, min[1], max[1]), .data[2] = random_float_min_max(random, min[2], max[2])};
 }

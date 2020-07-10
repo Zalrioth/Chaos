@@ -51,7 +51,7 @@ static inline void world_run_physics(struct World* world, real duration) {
     reg = reg->next;
   }
 
-  unsigned used_contacts = world_generate_contacts(world);
+  unsigned int used_contacts = world_generate_contacts(world);
 
   if (world->calculate_iterations)
     contact_resolver_set_iterations(&world->resolver, used_contacts * 4, used_contacts * 4);
