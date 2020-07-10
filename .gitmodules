@@ -1,0 +1,3 @@
+[submodule "lib/uber-math"]
+	path = lib/uber-math
+	url = https://github.com/Zalrioth/uber-math
