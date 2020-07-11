@@ -3,6 +3,8 @@
 #define FGEN_H
 
 #include <stdlib.h>
+#include <ubermath/ubermath.h>
+
 #include "chaos/core/body.h"
 
 #define FORCE_VECTOR_INIT_CAPACITY 4
@@ -12,34 +14,34 @@ struct Gravity {
   vec3 gravity_direction;
 };
 
-void gravity_init(struct Gravity* gravity, real* gravity_direction);
-void gravity_update_force(struct Gravity* gravity, struct RigidBody* body, real duration);
+void gravity_init(struct Gravity* gravity, vec3 gravity_direction);
+void gravity_update_force(struct Gravity* gravity, struct RigidBody* body, float duration);
 
 struct Spring {
   vec3 connection_point;
   vec3 other_connection_point;
   struct RigidBody* other;
-  real spring_constant;
-  real rest_length;
+  float spring_constant;
+  float rest_length;
 };
 
-void spring_init(struct Spring* spring, real* local_connection_point, struct RigidBody* other, vec3 other_connection_point, real spring_constant, real rest_length);
-void spring_update_force(struct Spring* spring, struct RigidBody* body, real duration);
+void spring_init(struct Spring* spring, vec3 local_connection_point, struct RigidBody* other, vec3 other_connection_point, float spring_constant, float rest_length);
+void spring_update_force(struct Spring* spring, struct RigidBody* body, float duration);
 
 struct Explosion {
   vec3 detonation;
-  real implosion_max_radius;
-  real implosion_min_radius;
-  real implosion_duration;
-  real implosion_force;
-  real shockwave_speed;
-  real shockwave_thickness;
-  real peak_concussion_force;
-  real concussion_duration;
-  real peak_convection_force;
-  real chimney_radius;
-  real chimney_height;
-  real convection_duration;
+  float implosion_max_radius;
+  float implosion_min_radius;
+  float implosion_duration;
+  float implosion_force;
+  float shockwave_speed;
+  float shockwave_thickness;
+  float peak_concussion_force;
+  float concussion_duration;
+  float peak_convection_force;
+  float chimney_radius;
+  float chimney_height;
+  float convection_duration;
 };
 
 //void explosion_init(struct Explosion* explosion);
@@ -49,29 +51,29 @@ struct Aero {
   mat3 tensor;
   vec3 position;
   // NOTE: Might be dangerous watch
-  real* wind_speed;
+  vec3* wind_speed;
 };
 
-void aero_init(struct Aero* aero, real* tensor, real* position, real* wind_speed);
-void aero_update_force(struct Aero* aero, struct RigidBody* body, real duration);
-void aero_update_force_from_tensor(struct Aero* aero, struct RigidBody* body, real duration, real* tensor);
+void aero_init(struct Aero* aero, mat3 tensor, vec3 position, vec3* wind_speed);
+void aero_update_force(struct Aero* aero, struct RigidBody* body, float duration);
+void aero_update_force_from_tensor(struct Aero* aero, struct RigidBody* body, float duration, mat3 tensor);
 
 struct AeroControl {
   struct Aero aero;
   mat3 max_tensor;
   mat3 min_tensor;
-  real control_setting;
+  float control_setting;
 };
 
-void aero_control_init(struct AeroControl* aero_control, real* base, real* min, real* max, real* position, real* wind_speed);
+void aero_control_init(struct AeroControl* aero_control, mat3 base, mat3 min, mat3 max, vec3 position, vec3* wind_speed);
 void aero_control_delete(struct AeroControl* aero_control);
-real* aero_control_get_tensor(struct AeroControl* aero_control);
-void aero_control_set_control(struct AeroControl* aero_control, real value);
-void aero_control_update_force(struct AeroControl* aero_control, struct RigidBody* body, real duration);
+mat3 aero_control_get_tensor(struct AeroControl* aero_control);
+void aero_control_set_control(struct AeroControl* aero_control, float value);
+void aero_control_update_force(struct AeroControl* aero_control, struct RigidBody* body, float duration);
 
 struct AngledAero {
   struct Aero aero;
-  quaternion orientation;
+  quat orientation;
 };
 
 //void angled_aero_init(struct AngledAero* angled_aero, real* tensor, real* position, real* windspeed);
@@ -79,16 +81,16 @@ struct AngledAero {
 //void angled_aero_update_force(struct AngledAero* angled_aero, struct RigidBody* body, real duration);
 
 struct Buoyancy {
-  real max_depth;
-  real volume;
-  real water_height;
-  real liquid_density;
+  float max_depth;
+  float volume;
+  float water_height;
+  float liquid_density;
   vec3 centre_of_bouyancy;
 };
 
 // Note: Default liquid density is 1000.0f
-void buoyancy_init(struct Buoyancy* buoyancy, real* c_of_b, real max_depth, real volume, real water_height, real liquid_density);
-void buoyancy_update_force(struct Buoyancy* buoyancy, struct RigidBody* body, real duration);
+void buoyancy_init(struct Buoyancy* buoyancy, vec3 c_of_b, float max_depth, float volume, float water_height, float liquid_density);
+void buoyancy_update_force(struct Buoyancy* buoyancy, struct RigidBody* body, float duration);
 
 //////////////////////////////////////////////////////
 
@@ -113,7 +115,7 @@ union Force {
 struct ForceGenerator {
   enum ForceType force_type;
   union Force force;
-  void (*update_force)(void*, struct RigidBody*, real);
+  void (*update_force)(void*, struct RigidBody*, float);
 };
 
 struct ForceRegistration {
@@ -199,9 +201,9 @@ struct ForceRegistry {
   struct ForceVector registrations;
 };
 
+void force_registry_update_forces(struct ForceRegistry* force_registry, float duration);
 void force_registry_add(struct ForceRegistry* force_registry, struct RigidBody* body, struct ForceGenerator* fg);
 void force_registry_remove(struct ForceRegistry* force_registry, struct RigidBody* body, struct ForceGenerator* fg);
 void force_registry_clear(struct ForceRegistry* force_registry);
-void force_registry_update_forces(struct ForceRegistry* force_registry, real duration);
 
 #endif  // FGEN_H

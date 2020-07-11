@@ -2,16 +2,18 @@
 #ifndef JOINTS_H
 #define JOINTS_H
 
+#include <ubermath/ubermath.h>
+
 #include "chaos/core/contacts.h"
 
 struct Joint {
   struct ContactGenerator contact_generator;
   struct RigidBody* body[2];
   vec3 position[2];
-  real error;
+  float error;
 };
 
-static inline void joint_set(struct Joint* joint, struct RigidBody* a, real* a_pos, struct RigidBody* b, real* b_pos, real error);
-static inline unsigned int joint_add_contact(struct Joint* joint, struct Contact* contact, unsigned limit);
+static inline unsigned int joint_add_contact(struct Joint* joint, struct Contact* contact, unsigned int limit);
+static inline void joint_set(struct Joint* joint, struct RigidBody* a, vec3 a_pos, struct RigidBody* b, vec3 b_pos, float error);
 
 #endif  // JOINTS_H

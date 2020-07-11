@@ -3,6 +3,8 @@
 #define COLLIDE_FINE_H
 
 #include <memory.h>
+#include <ubermath/ubermath.h>
+
 #include "chaos/core/contacts.h"
 
 struct CollisionPrimitive {
@@ -12,17 +14,16 @@ struct CollisionPrimitive {
 };
 
 void collision_primitive_calculate_internals(struct CollisionPrimitive* collision_primitive);
-real* collision_primitive_get_axis(struct CollisionPrimitive* collision_primitive, unsigned int index);
-real* collision_primitive_get_transform(struct CollisionPrimitive* collision_primitive);
+vec3 collision_primitive_get_axis(struct CollisionPrimitive* collision_primitive, unsigned int index);
 
 struct CollisionSphere {
   struct CollisionPrimitive collision_primitive;
-  real radius;
+  float radius;
 };
 
 struct CollisionPlane {
   vec3 direction;
-  real offset;
+  float offset;
 };
 
 struct CollisionBox {
@@ -40,9 +41,9 @@ struct CollisionData {
   struct Contact* contacts;
   int contacts_left;
   unsigned int contact_count;
-  real friction;
-  real restitution;
-  real tolerance;
+  float friction;
+  float restitution;
+  float tolerance;
 };
 
 bool collision_data_has_more_contacts(struct CollisionData* collision_data);
@@ -53,7 +54,7 @@ unsigned int collision_detector_sphere_and_true_plane(struct CollisionSphere* sp
 unsigned int collision_detector_sphere_and_sphere(struct CollisionSphere* one, struct CollisionSphere* two, struct CollisionData* data);
 unsigned int collision_detector_box_and_half_space(struct CollisionBox* box, struct CollisionPlane* plane, struct CollisionData* data);
 unsigned int collision_detector_box_and_box(struct CollisionBox* one, struct CollisionBox* two, struct CollisionData* data);
-unsigned int collision_detector_box_and_point(struct CollisionBox* box, real* point, struct CollisionData* data);
+unsigned int collision_detector_box_and_point(struct CollisionBox* box, vec3 point, struct CollisionData* data);
 unsigned int collision_detector_box_and_sphere(struct CollisionBox* box, struct CollisionSphere* sphere, struct CollisionData* data);
 
 #endif  // COLLIDE_FINE_H

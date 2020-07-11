@@ -3,6 +3,8 @@
 #define WORLD_H
 
 #include <stdlib.h>
+#include <ubermath/ubermath.h>
+
 #include "chaos/core/body.h"
 #include "chaos/core/contacts.h"
 
@@ -26,11 +28,5 @@ struct World {
   struct Contact* contacts;
   unsigned int max_contacts;
 };
-
-static inline void world_init(struct World* world, unsigned int max_contacts, unsigned int iterations);
-static inline void world_delete(struct World* world);
-static inline void world_start_frame(struct World* world);
-static inline unsigned int world_generate_contacts(struct World* world);
-static inline void world_run_physics(struct World* world, real duration);
 
 #endif  // WORLD_H

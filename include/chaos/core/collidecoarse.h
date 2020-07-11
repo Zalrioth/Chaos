@@ -1,19 +1,21 @@
 #ifndef COLLIDE_COARSE_H
 #define COLLIDE_COARSE_H
 
+#include <math.h>
 #include <stddef.h>
+
 #include "chaos/core/contacts.h"
 
 struct BoundingSphere {
   vec3 centre;
-  real radius;
+  float radius;
 };
 
-static inline void bounding_sphere_init(struct BoundingSphere* bounding_sphere, real* centre, real radius);
+static inline void bounding_sphere_init(struct BoundingSphere* bounding_sphere, vec3 centre, float radius);
 static inline void bounding_sphere_init_two(struct BoundingSphere* bounding_sphere, struct BoundingSphere* one, struct BoundingSphere* two);
 static inline bool bounding_sphere_overlaps(struct BoundingSphere* bounding_sphere, struct BoundingSphere* other);
-static inline real bounding_sphere_get_growth(struct BoundingSphere* bounding_sphere, struct BoundingSphere* other);
-static inline real bounding_sphere_get_size(struct BoundingSphere* bounding_sphere);
+static inline float bounding_sphere_get_growth(struct BoundingSphere* bounding_sphere, struct BoundingSphere* other);
+static inline float bounding_sphere_get_size(struct BoundingSphere* bounding_sphere);
 
 struct PotentialContact {
   struct RigidBody* body[2];

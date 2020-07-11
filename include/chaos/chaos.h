@@ -1,4 +1,4 @@
-#pragma
+#pragma once
 #ifndef CHAOS_H
 #define CHAOS_H
 

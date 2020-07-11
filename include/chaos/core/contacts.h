@@ -44,6 +44,15 @@ struct ContactResolver {
   unsigned int position_iterations_used;
 };
 
+void contact_resolver_init(struct ContactResolver* contact_resolver, unsigned int velocity_iterations, unsigned int position_iterations, float velocity_epsilon, float position_epsilon);
+bool contact_resolver_is_valid(struct ContactResolver* contact_resolver);
+void contact_resolver_set_iterations(struct ContactResolver* contact_resolver, unsigned int velocity_iterations, unsigned int position_iterations);
+void contact_resolver_set_epsilon(struct ContactResolver* contact_resolver, float velocity_epsilon, float position_epsilon);
+void contact_resolver_resolve_contacts(struct ContactResolver* contact_resolver, struct Contact* contacts, unsigned int num_contacts, float duration);
+void contact_resolver_prepare_contacts(struct ContactResolver* contact_resolver, struct Contact* contacts, unsigned int num_contacts, float duration);
+void contact_resolver_adjust_velocities(struct ContactResolver* contact_resolver, struct Contact* contact, unsigned int num_contacts, float duration);
+void contact_resolver_adjust_positions(struct ContactResolver* contact_resolver, struct Contact* contact, unsigned int num_contacts, float duration);
+
 struct ContactGenerator {
   unsigned int (*add_contact)(struct Contact*, unsigned int);
   //virtual unsigned addContact(Contact* contact, unsigned limit) const = 0;

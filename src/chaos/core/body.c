@@ -101,6 +101,14 @@ void rigid_body_set_inertia_tensor(struct RigidBody* rigid_body, mat3 inertia_te
   rigid_body->inverse_inertia_tensor = mat3_inverse(inertia_tensor);
 }
 
+mat3 rigid_body_get_inertia_tensor(struct RigidBody* rigid_body) {
+  return mat3_inverse(rigid_body->inverse_inertia_tensor);
+}
+
+mat3 rigid_body_get_inertia_tensor_world(struct RigidBody* rigid_body) {
+  return mat3_inverse(rigid_body->inverse_inertia_tensor_world);
+}
+
 void rigid_body_set_damping(struct RigidBody* rigid_body, float linear_damping, float angular_damping) {
   rigid_body->linear_damping = linear_damping;
   rigid_body->angular_damping = angular_damping;

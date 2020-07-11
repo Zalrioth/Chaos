@@ -3,14 +3,14 @@
 
 static inline void world_init(struct World* world, unsigned int max_contacts, unsigned int iterations) {
   world->first_body = NULL;
-  contact_resolver_init(&world->resolver, iterations, iterations, (real)0.01, (real)0.01);
+  contact_resolver_init(&world->resolver, iterations, iterations, 0.01f, 0.01f);
   world->first_contact_gen = NULL;
   world->max_contacts = max_contacts;
   world->contacts = calloc(max_contacts, sizeof(struct Contact));
   world->calculate_iterations = (iterations == 0);
 }
 
-// NOTE: Might need to iterate free
+// TODO: Might need to iterate free
 static inline void world_delete(struct World* world) {
   free(world->contacts);
 }
@@ -44,7 +44,7 @@ static inline unsigned int world_generate_contacts(struct World* world) {
   return world->max_contacts - limit;
 }
 
-static inline void world_run_physics(struct World* world, real duration) {
+static inline void world_run_physics(struct World* world, float duration) {
   struct BodyRegistration* reg = world->first_body;
   while (reg) {
     rigid_body_integrate(reg->body, duration);

@@ -37,6 +37,8 @@ float rigid_body_get_mass(struct RigidBody* rigid_body);
 void rigid_body_set_inverse_mass(struct RigidBody* rigid_body, float inverse_mass);
 bool rigid_body_has_finite_mass(struct RigidBody* rigid_body);
 void rigid_body_set_inertia_tensor(struct RigidBody* rigid_body, mat3 inertia_tensor);
+mat3 rigid_body_get_inertia_tensor(struct RigidBody* rigid_body);
+mat3 rigid_body_get_inertia_tensor_world(struct RigidBody* rigid_body);
 void rigid_body_set_damping(struct RigidBody* rigid_body, float linear_damping, float angular_damping);
 void rigid_body_set_position_xyz(struct RigidBody* rigid_body, float x, float y, float z);
 void rigid_body_set_orientation(struct RigidBody* rigid_body, quat orientation);

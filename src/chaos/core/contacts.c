@@ -145,38 +145,36 @@ void contact_apply_velocity_change(struct Contact* contact, vec3 velocity_change
 }
 
 vec3 contact_calculate_frictionless_impulse(struct Contact* contact, mat3 inverse_inertia_tensor[2]) {
-  vec3 delta_vel_world = delta_vel_world, vec3_cross_product(contact->relative_contact_position[0], contact->contact_normal);
+  vec3 delta_vel_world = vec3_cross_product(contact->relative_contact_position[0], contact->contact_normal);
   delta_vel_world = mat3_transform(inverse_inertia_tensor[0], delta_vel_world);
   delta_vel_world = vec3_cross_product(delta_vel_world, contact->relative_contact_position[0]);
-  real delta_velocity = vec3_magnitude(vec3_component_product(delta_vel_world, contact->contact_normal));
-  delta_velocity += rigid_body_get_inverse_mass(contact->body[0]);
+  float delta_velocity = vec3_magnitude(vec3_component_product(delta_vel_world, contact->contact_normal));
+  delta_velocity += contact->body[0]->inverse_mass;
 
   if (contact->body[1]) {
     vec3 delta_vel_world_other = vec3_cross_product(contact->relative_contact_position[1], contact->contact_normal);
     delta_vel_world_other = mat3_transform(inverse_inertia_tensor[1], delta_vel_world_other);
     delta_vel_world_other = vec3_cross_product(delta_vel_world_other, contact->relative_contact_position[1]);
     delta_velocity += vec3_magnitude(vec3_component_product(delta_vel_world_other, contact->contact_normal));
-    delta_velocity += rigid_body_get_inverse_mass(contact->body[1]);
+    delta_velocity += contact->body[1]->inverse_mass;
   }
 
   return (vec3){.data[0] = contact->desired_delta_velocity / delta_velocity, .data[1] = 0, .data[2] = 0};
 }
 
-vec3 contact_calculate_friction_impulse(struct Contact* contact, mat3* inverse_inertia_tensor) {
-  vec3 impulse_contact;
+vec3 contact_calculate_friction_impulse(struct Contact* contact, mat3 inverse_inertia_tensor[2]) {
   float inverse_mass = contact->body[0]->inverse_mass;
 
-  mat3 impulse_to_torque;
-  impulse_to_torque = mat3_skew_symmetric(contact->relative_contact_position[0]);
+  mat3 impulse_to_torque = MAT3_ZERO;
+  impulse_to_torque = mat3_skew_symmetric(impulse_to_torque, contact->relative_contact_position[0]);
 
-  mat3 delta_vel_world;
-  mat3_copy(delta_vel_world, impulse_to_torque);
-  mat3_copy(delta_vel_world, mat3_mul_mat3(delta_vel_world, inverse_inertia_tensor[0]));
-  mat3_copy(delta_vel_world, mat3_mul_mat3(delta_vel_world, impulse_to_torque));
-  mat3_copy(delta_vel_world, mat3_mul_scalar(delta_vel_world, -1));
+  mat3 delta_vel_world = impulse_to_torque;
+  delta_vel_world = mat3_mul_mat3(delta_vel_world, inverse_inertia_tensor[0]);
+  delta_vel_world = mat3_mul_mat3(delta_vel_world, impulse_to_torque);
+  delta_vel_world = mat3_mul_scalar(delta_vel_world, -1);
 
   if (contact->body[1]) {
-    impulse_to_torque = mat3_skew_symmetric(contact->relative_contact_position[1]);
+    impulse_to_torque = mat3_skew_symmetric(impulse_to_torque, contact->relative_contact_position[1]);
 
     mat3 delta_vel_world_other = impulse_to_torque;
     delta_vel_world_other = mat3_mul_mat3(delta_vel_world, inverse_inertia_tensor[1]);
@@ -188,34 +186,34 @@ vec3 contact_calculate_friction_impulse(struct Contact* contact, mat3* inverse_i
     inverse_mass += contact->body[1]->inverse_mass;
   }
 
-  mat3 delta_velocity =, mat3_transpose(contact->contact_to_world));
+  mat3 delta_velocity = mat3_transpose(contact->contact_to_world);
   delta_velocity = mat3_mul_mat3(delta_velocity, delta_vel_world);
   delta_velocity = mat3_mul_mat3(delta_velocity, contact->contact_to_world);
 
-  delta_velocity[0] += inverse_mass;
-  delta_velocity[4] += inverse_mass;
-  delta_velocity[8] += inverse_mass;
+  delta_velocity.data[0] += inverse_mass;
+  delta_velocity.data[4] += inverse_mass;
+  delta_velocity.data[8] += inverse_mass;
 
   mat3 impulse_matrix = mat3_inverse(delta_velocity);
 
-  vec3 vel_kill = (ver3){.data[0] = contact->desired_delta_velocity, .data[1] = -contact->contact_velocity[1], .data[2] = -contact->contact_velocity[2]};
+  vec3 vel_kill = (vec3){.data[0] = contact->desired_delta_velocity, .data[1] = -contact->contact_velocity.data[1], .data[2] = -contact->contact_velocity.data[2]};
 
-  impulse_contact = mat3_transform(impulse_matrix, vel_kill);
+  vec3 impulse_contact = mat3_transform(impulse_matrix, vel_kill);
 
-  float planar_impulse = sqrtf(impulse_contact[1] * impulse_contact[1] + impulse_contact[2] * impulse_contact[2]);
-  if (planar_impulse > impulse_contact[0] * contact->friction) {
-    impulse_contact[1] /= planar_impulse;
-    impulse_contact[2] /= planar_impulse;
+  float planar_impulse = sqrtf(impulse_contact.data[1] * impulse_contact.data[1] + impulse_contact.data[2] * impulse_contact.data[2]);
+  if (planar_impulse > impulse_contact.data[0] * contact->friction) {
+    impulse_contact.data[1] /= planar_impulse;
+    impulse_contact.data[2] /= planar_impulse;
 
-    impulse_contact[0] = delta_velocity[0] + delta_velocity[1] * contact->friction * impulse_contact[1] + delta_velocity[2] * contact->friction * impulse_contact[2];
-    impulse_contact[0] = contact->desired_delta_velocity / impulse_contact[0];
-    impulse_contact[1] *= contact->friction * impulse_contact[0];
-    impulse_contact[2] *= contact->friction * impulse_contact[0];
+    impulse_contact.data[0] = delta_velocity.data[0] + delta_velocity.data[1] * contact->friction * impulse_contact.data[1] + delta_velocity.data[2] * contact->friction * impulse_contact.data[2];
+    impulse_contact.data[0] = contact->desired_delta_velocity / impulse_contact.data[0];
+    impulse_contact.data[1] *= contact->friction * impulse_contact.data[0];
+    impulse_contact.data[2] *= contact->friction * impulse_contact.data[0];
   }
-  return (vec3){.data[0] = impulse_contact[0], .data[1] = impulse_contact[1], .data[2] = impulse_contact[0]};
+  return (vec3){.data[0] = impulse_contact.data[0], .data[1] = impulse_contact.data[1], .data[2] = impulse_contact.data[0]};
 }
 
-void contact_apply_position_change(struct Contact* contact, vec3[2] linear_change, vec3[2] angular_change, real penetration) {
+void contact_apply_position_change(struct Contact* contact, vec3 linear_change[2], vec3 angular_change[2], float penetration) {
   float angular_limit = 0.2f;
   float angular_move[2];
   float linear_move[2];
@@ -226,7 +224,7 @@ void contact_apply_position_change(struct Contact* contact, vec3[2] linear_chang
 
   for (unsigned int i = 0; i < 2; i++)
     if (contact->body[i]) {
-      mat3 inverse_inertia_tensor = rigid_body_get_inverse_inertia_tensor_world(contact->body[i]);
+      mat3 inverse_inertia_tensor = contact->body[i]->inverse_inertia_tensor_world;
 
       vec3 angular_inertia_world = vec3_cross_product(contact->relative_contact_position[i], contact->contact_normal);
       angular_inertia_world = mat3_transform(inverse_inertia_tensor, angular_inertia_world);
@@ -239,21 +237,21 @@ void contact_apply_position_change(struct Contact* contact, vec3[2] linear_chang
 
   for (unsigned int i = 0; i < 2; i++)
     if (contact->body[i]) {
-      real sign = (i == 0) ? 1 : -1;
+      float sign = (i == 0) ? 1 : -1;
       angular_move[i] = sign * penetration * (angular_inertia[i] / total_inertia);
       linear_move[i] = sign * penetration * (linear_inertia[i] / total_inertia);
 
-      vec3 projection = contact->relative_contact_position[i]);
-      projection = vec3_add_scaled_vector(projection, contact->contact_normal, -vec3_scalar_product(contact->relative_contact_position[i], contact->contact_normal));
+      vec3 projection = contact->relative_contact_position[i];
+      projection = vec3_add_scaled_vector(projection, contact->contact_normal, -vec3_dot(contact->relative_contact_position[i], contact->contact_normal));
 
       float max_magnitude = angular_limit * vec3_magnitude(projection);
 
       if (angular_move[i] < -max_magnitude) {
-        real totalMove = angular_move[i] + linear_move[i];
+        float totalMove = angular_move[i] + linear_move[i];
         angular_move[i] = -max_magnitude;
         linear_move[i] = totalMove - angular_move[i];
       } else if (angular_move[i] > max_magnitude) {
-        real totalMove = angular_move[i] + linear_move[i];
+        float totalMove = angular_move[i] + linear_move[i];
         angular_move[i] = max_magnitude;
         linear_move[i] = totalMove - angular_move[i];
       }
@@ -262,20 +260,16 @@ void contact_apply_position_change(struct Contact* contact, vec3[2] linear_chang
         angular_change[i] = VEC3_ZERO;
       else {
         vec3 target_angular_direction = vec3_cross_product(contact->relative_contact_position[i], contact->contact_normal);
-
         mat3 inverse_inertia_tensor = rigid_body_get_inertia_tensor_world(contact->body[i]);
-
-        angular_change[i] = vec3_mul_scalar(mat3_transform(inverse_inertia_tensor, target_angular_direction), (angular_move[i] / angular_inertia[i]));
+        angular_change[i] = vec3_scale(mat3_transform(inverse_inertia_tensor, target_angular_direction), (angular_move[i] / angular_inertia[i]));
       }
 
-      linear_change[i] = vec3_mul_scalar(contact->contact_normal, linear_move[i]);
+      linear_change[i] = vec3_scale(contact->contact_normal, linear_move[i]);
 
-      vec3 pos = contact->body[i]->position;
-      pos = vec3_add_scaled_vector(pos, contact->contact_normal, linear_move[i]);
-      rigid_body_set_position(contact->body[i], pos);
+      contact->body[i]->position = vec3_add_scaled_vector(contact->body[i]->position, contact->contact_normal, linear_move[i]);
 
       quat q;
-      q = contact->body[i]->oritentation;
+      q = contact->body[i]->orientation;
       quaternion_add_scaled_vector(q, angular_change[i], 1.0f);
       rigid_body_set_orientation(contact->body[i], q);
 
@@ -284,7 +278,9 @@ void contact_apply_position_change(struct Contact* contact, vec3[2] linear_chang
     }
 }
 
-void contact_resolver_init(struct ContactResolver* contact_resolver, unsigned int velocity_iterations, unsigned int position_iterations, real velocity_epsilon, real position_epsilon) {
+////////////////////////////////////////////////////////////////////////////////////////
+
+void contact_resolver_init(struct ContactResolver* contact_resolver, unsigned int velocity_iterations, unsigned int position_iterations, float velocity_epsilon, float position_epsilon) {
   contact_resolver_set_iterations(contact_resolver, velocity_iterations, position_iterations);
   contact_resolver_set_epsilon(contact_resolver, velocity_epsilon, position_epsilon);
 }
@@ -298,12 +294,12 @@ void contact_resolver_set_iterations(struct ContactResolver* contact_resolver, u
   contact_resolver->position_iterations = position_iterations;
 }
 
-void contact_resolver_set_epsilon(struct ContactResolver* contact_resolver, real velocity_epsilon, real position_epsilon) {
+void contact_resolver_set_epsilon(struct ContactResolver* contact_resolver, float velocity_epsilon, float position_epsilon) {
   contact_resolver->velocity_epsilon = velocity_epsilon;
   contact_resolver->position_epsilon = position_epsilon;
 }
 
-void contact_resolver_resolve_contacts(struct ContactResolver* contact_resolver, struct Contact* contacts, unsigned int num_contacts, real duration) {
+void contact_resolver_resolve_contacts(struct ContactResolver* contact_resolver, struct Contact* contacts, unsigned int num_contacts, float duration) {
   if (num_contacts == 0)
     return;
   if (!contact_resolver_is_valid(contact_resolver))
@@ -314,20 +310,20 @@ void contact_resolver_resolve_contacts(struct ContactResolver* contact_resolver,
   contact_resolver_adjust_velocities(contact_resolver, contacts, num_contacts, duration);
 }
 
-void contact_resolver_prepare_contacts(struct ContactResolver* contact_resolver, struct Contact* contacts, unsigned int num_contacts, real duration) {
+void contact_resolver_prepare_contacts(struct ContactResolver* contact_resolver, struct Contact* contacts, unsigned int num_contacts, float duration) {
   struct Contact* last_contact = contacts + num_contacts;
   for (struct Contact* contact = contacts; contact < last_contact; contact++) {
     contact_calculate_internals(contact, duration);
   }
 }
 
-void contact_resolver_adjust_velocities(struct ContactResolver* contact_resolver, struct Contact* contact, unsigned num_contacts, real duration) {
+void contact_resolver_adjust_velocities(struct ContactResolver* contact_resolver, struct Contact* contact, unsigned int num_contacts, float duration) {
   vec3 velocity_change[2], rotation_change[2];
   vec3 delta_vel;
 
   contact_resolver->velocity_iterations_used = 0;
   while (contact_resolver->velocity_iterations_used < contact_resolver->velocity_iterations) {
-    real max = contact_resolver->velocity_epsilon;
+    float max = contact_resolver->velocity_epsilon;
     unsigned index = num_contacts;
     for (unsigned i = 0; i < num_contacts; i++) {
       if (contact[i].desired_delta_velocity > max) {
@@ -347,7 +343,7 @@ void contact_resolver_adjust_velocities(struct ContactResolver* contact_resolver
           for (unsigned int d = 0; d < 2; d++) {
             if (contact[i].body[b] == contact[index].body[d]) {
               delta_vel = vec3_add(velocity_change[d], vec3_cross_product(rotation_change[d], contact[i].relative_contact_position[b]));
-              contact[i].contact_velocity = vec3_add(contact[i].contact_velocity, vec3_mul_scalar(mat3_transform_transpose(contact[i].contact_to_world, delta_vel), (b ? -1 : 1)));
+              contact[i].contact_velocity = vec3_add(contact[i].contact_velocity, vec3_scale(mat3_transform_transpose(contact[i].contact_to_world, delta_vel), (b ? -1 : 1)));
               contact_calculate_desired_delta_velocity(&contact[i], duration);
             }
           }
@@ -357,10 +353,10 @@ void contact_resolver_adjust_velocities(struct ContactResolver* contact_resolver
   }
 }
 
-void contact_resolver_adjust_positions(struct ContactResolver* contact_resolver, struct Contact* contact, unsigned num_contacts, real duration) {
+void contact_resolver_adjust_positions(struct ContactResolver* contact_resolver, struct Contact* contact, unsigned int num_contacts, float duration) {
   unsigned int i, index;
   vec3 linear_change[2], angular_change[2];
-  real max;
+  float max;
   vec3 delta_position;
 
   contact_resolver->position_iterations_used = 0;
@@ -385,7 +381,7 @@ void contact_resolver_adjust_positions(struct ContactResolver* contact_resolver,
           for (unsigned int d = 0; d < 2; d++) {
             if (contact[i].body[b] == contact[index].body[d]) {
               delta_position = vec3_add(linear_change[d], vec3_cross_product(angular_change[d], contact[i].relative_contact_position[b]));
-              contact[i].penetration += vec3_scalar_product(delta_position, contact[i].contact_normal) * (b ? 1 : -1);
+              contact[i].penetration += vec3_dot(delta_position, contact[i].contact_normal) * (b ? 1 : -1);
             }
           }
         }
