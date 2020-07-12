@@ -56,7 +56,8 @@ void contact_calculate_contact_basis(struct Contact* contact) {
     contact_tangent[1].data[1] = -contact_normal.data[0] * contact_tangent[0].data[2];
     contact_tangent[1].data[2] = contact_normal.data[0] * contact_tangent[0].data[1];
   }
-  contact->contact_to_world = (mat3){.vecs[0] = contact_normal, .vecs[1] = contact_tangent[0], .vecs[2] = contact_tangent[1]};
+  contact->contact_to_world = (mat3){.m00 = contact_normal.data[0], .m01 = contact_normal.data[1], .m02 = contact_normal.data[2], .m10 = contact_tangent[0].data[0], .m11 = contact_tangent[0].data[1], .m12 = contact_tangent[0].data[2], .m20 = contact_tangent[1].data[0], .m21 = contact_tangent[1].data[1], .m22 = contact_tangent[1].data[2]};
+  //contact->contact_to_world = (mat3){.vecs[0] = contact_normal, .vecs[1] = contact_tangent[0], .vecs[2] = contact_tangent[1]};
 }
 
 vec3 contact_calculate_local_velocity(struct Contact* contact, unsigned int body_index, float duration) {
