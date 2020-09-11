@@ -1,6 +1,6 @@
 #include "chaos/core/joints.h"
 
-static inline unsigned int joint_add_contact(struct Joint* joint, struct Contact* contact, unsigned int limit) {
+unsigned int joint_add_contact(struct Joint* joint, struct Contact* contact, unsigned int limit) {
   vec3 a_pos_world = rigid_body_get_point_in_world_space(joint->body[0], joint->position[0]);
   vec3 b_pos_world = rigid_body_get_point_in_world_space(joint->body[1], joint->position[1]);
 
@@ -24,7 +24,7 @@ static inline unsigned int joint_add_contact(struct Joint* joint, struct Contact
   return 0;
 }
 
-static inline void joint_set(struct Joint* joint, struct RigidBody* a, vec3 a_pos, struct RigidBody* b, vec3 b_pos, float error) {
+void joint_set(struct Joint* joint, struct RigidBody* a, vec3 a_pos, struct RigidBody* b, vec3 b_pos, float error) {
   joint->body[0] = a;
   joint->body[1] = b;
 

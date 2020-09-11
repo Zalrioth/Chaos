@@ -1,6 +1,6 @@
 #include "chaos/core/body.h"
 
-void rigid_body_transform_inertia_tensor(mat3 iit_world, quat q, mat3 iit_body, mat4 rotmat) {
+mat3 rigid_body_transform_inertia_tensor(mat3 iit_body, mat4 rotmat) {
   float t4 = rotmat.data[0] * iit_body.data[0] + rotmat.data[1] * iit_body.data[3] + rotmat.data[2] * iit_body.data[6];
   float t9 = rotmat.data[0] * iit_body.data[1] + rotmat.data[1] * iit_body.data[4] + rotmat.data[2] * iit_body.data[7];
   float t14 = rotmat.data[0] * iit_body.data[2] + rotmat.data[1] * iit_body.data[5] + rotmat.data[2] * iit_body.data[8];
@@ -11,38 +11,44 @@ void rigid_body_transform_inertia_tensor(mat3 iit_world, quat q, mat3 iit_body, 
   float t57 = rotmat.data[8] * iit_body.data[1] + rotmat.data[9] * iit_body.data[4] + rotmat.data[10] * iit_body.data[7];
   float t62 = rotmat.data[8] * iit_body.data[2] + rotmat.data[9] * iit_body.data[5] + rotmat.data[10] * iit_body.data[8];
 
-  iit_world.data[0] = t4 * rotmat.data[0] + t9 * rotmat.data[1] + t14 * rotmat.data[2];
-  iit_world.data[1] = t4 * rotmat.data[4] + t9 * rotmat.data[5] + t14 * rotmat.data[6];
-  iit_world.data[2] = t4 * rotmat.data[8] + t9 * rotmat.data[9] + t14 * rotmat.data[10];
-  iit_world.data[3] = t28 * rotmat.data[0] + t33 * rotmat.data[1] + t38 * rotmat.data[2];
-  iit_world.data[4] = t28 * rotmat.data[4] + t33 * rotmat.data[5] + t38 * rotmat.data[6];
-  iit_world.data[5] = t28 * rotmat.data[8] + t33 * rotmat.data[9] + t38 * rotmat.data[10];
-  iit_world.data[6] = t52 * rotmat.data[0] + t57 * rotmat.data[1] + t62 * rotmat.data[2];
-  iit_world.data[7] = t52 * rotmat.data[4] + t57 * rotmat.data[5] + t62 * rotmat.data[6];
-  iit_world.data[8] = t52 * rotmat.data[8] + t57 * rotmat.data[9] + t62 * rotmat.data[10];
+  return (mat3){.data[0] = t4 * rotmat.data[0] + t9 * rotmat.data[1] + t14 * rotmat.data[2],
+                .data[1] = t4 * rotmat.data[4] + t9 * rotmat.data[5] + t14 * rotmat.data[6],
+                .data[2] = t4 * rotmat.data[8] + t9 * rotmat.data[9] + t14 * rotmat.data[10],
+                .data[3] = t28 * rotmat.data[0] + t33 * rotmat.data[1] + t38 * rotmat.data[2],
+                .data[4] = t28 * rotmat.data[4] + t33 * rotmat.data[5] + t38 * rotmat.data[6],
+                .data[5] = t28 * rotmat.data[8] + t33 * rotmat.data[9] + t38 * rotmat.data[10],
+                .data[6] = t52 * rotmat.data[0] + t57 * rotmat.data[1] + t62 * rotmat.data[2],
+                .data[7] = t52 * rotmat.data[4] + t57 * rotmat.data[5] + t62 * rotmat.data[6],
+                .data[8] = t52 * rotmat.data[8] + t57 * rotmat.data[9] + t62 * rotmat.data[10]};
 }
 
-void rigid_body_calculate_transform_matrix(mat4 transform_matrix, vec3 position, quat orientation) {
-  transform_matrix.data[0] = 1 - 2 * orientation.data[2] * orientation.data[2] - 2 * orientation.data[3] * orientation.data[3];
-  transform_matrix.data[1] = 2 * orientation.data[1] * orientation.data[2] - 2 * orientation.data[0] * orientation.data[3];
-  transform_matrix.data[2] = 2 * orientation.data[1] * orientation.data[3] + 2 * orientation.data[0] * orientation.data[2];
-  transform_matrix.data[3] = position.data[0];
+mat4 rigid_body_calculate_transform_matrix(vec3 position, quat orientation) {
+  return (mat4){
+      .data[0] = 1 - 2 * orientation.data[1] * orientation.data[1] - 2 * orientation.data[2] * orientation.data[2],
+      .data[1] = 2 * orientation.data[0] * orientation.data[1] - 2 * orientation.data[3] * orientation.data[2],
+      .data[2] = 2 * orientation.data[0] * orientation.data[2] + 2 * orientation.data[3] * orientation.data[1],
+      .data[3] = position.data[0],
 
-  transform_matrix.data[4] = 2 * orientation.data[1] * orientation.data[2] + 2 * orientation.data[0] * orientation.data[3];
-  transform_matrix.data[5] = 1 - 2 * orientation.data[1] * orientation.data[1] - 2 * orientation.data[3] * orientation.data[3];
-  transform_matrix.data[6] = 2 * orientation.data[2] * orientation.data[3] - 2 * orientation.data[0] * orientation.data[1];
-  transform_matrix.data[7] = position.data[1];
+      .data[4] = 2 * orientation.data[0] * orientation.data[1] + 2 * orientation.data[3] * orientation.data[2],
+      .data[5] = 1 - 2 * orientation.data[0] * orientation.data[0] - 2 * orientation.data[2] * orientation.data[2],
+      .data[6] = 2 * orientation.data[1] * orientation.data[2] - 2 * orientation.data[3] * orientation.data[0],
+      .data[7] = position.data[1],
 
-  transform_matrix.data[8] = 2 * orientation.data[1] * orientation.data[3] - 2 * orientation.data[0] * orientation.data[2];
-  transform_matrix.data[9] = 2 * orientation.data[2] * orientation.data[3] + 2 * orientation.data[0] * orientation.data[1];
-  transform_matrix.data[10] = 1 - 2 * orientation.data[1] * orientation.data[1] - 2 * orientation.data[2] * orientation.data[2];
-  transform_matrix.data[11] = position.data[2];
+      .data[8] = 2 * orientation.data[0] * orientation.data[2] - 2 * orientation.data[3] * orientation.data[1],
+      .data[9] = 2 * orientation.data[1] * orientation.data[2] + 2 * orientation.data[3] * orientation.data[0],
+      .data[10] = 1 - 2 * orientation.data[0] * orientation.data[0] - 2 * orientation.data[1] * orientation.data[1],
+      .data[11] = position.data[2],
+
+      .data[12] = 0.0f,
+      .data[13] = 0.0f,
+      .data[14] = 0.0f,
+      .data[15] = 1.0f};
 }
 
 void rigid_body_calculate_derived_data(struct RigidBody* rigid_body) {
   quaternion_normalise(rigid_body->orientation);
-  rigid_body_calculate_transform_matrix(rigid_body->transform_matrix, rigid_body->position, rigid_body->orientation);
-  rigid_body_transform_inertia_tensor(rigid_body->inverse_inertia_tensor_world, rigid_body->orientation, rigid_body->inverse_inertia_tensor, rigid_body->transform_matrix);
+  rigid_body->transform_matrix = rigid_body_calculate_transform_matrix(rigid_body->position, rigid_body->orientation);
+  rigid_body->inverse_inertia_tensor_world = rigid_body_transform_inertia_tensor(rigid_body->inverse_inertia_tensor, rigid_body->transform_matrix);
 }
 
 void rigid_body_integrate(struct RigidBody* rigid_body, float duration) {
@@ -58,7 +64,7 @@ void rigid_body_integrate(struct RigidBody* rigid_body, float duration) {
   rigid_body->rotation = vec3_add_scaled_vector(rigid_body->rotation, angular_acceleration, duration);
 
   rigid_body->velocity = vec3_scale(rigid_body->velocity, powf(rigid_body->linear_damping, duration));
-  rigid_body->rotation = vec3_scale(rigid_body->velocity, powf(rigid_body->angular_damping, duration));
+  rigid_body->rotation = vec3_scale(rigid_body->rotation, powf(rigid_body->angular_damping, duration));
 
   rigid_body->position = vec3_add_scaled_vector(rigid_body->position, rigid_body->velocity, duration);
   rigid_body->orientation = quaternion_add_scaled_vector(rigid_body->orientation, rigid_body->rotation, duration);
@@ -67,12 +73,12 @@ void rigid_body_integrate(struct RigidBody* rigid_body, float duration) {
   rigid_body_clear_accumulators(rigid_body);
 
   if (rigid_body->can_sleep) {
-    float current_motion = vec3_dot(rigid_body->velocity, rigid_body->velocity) + vec3_dot(rigid_body->rotation, rigid_body->rotation);
+    float current_motion = vec3_magnitude(rigid_body->velocity) + vec3_magnitude(rigid_body->rotation);
     float bias = powf(0.5, duration);
     rigid_body->motion = bias * rigid_body->motion + (1 - bias) * current_motion;
 
     if (rigid_body->motion < SLEEP_EPSILON)
-      rigid_body->is_awake = false;
+      rigid_body_set_awake(rigid_body, false);
     else if (rigid_body->motion > 10 * SLEEP_EPSILON)
       rigid_body->motion = 10 * SLEEP_EPSILON;
   }
@@ -106,7 +112,7 @@ mat3 rigid_body_get_inertia_tensor(struct RigidBody* rigid_body) {
 }
 
 mat3 rigid_body_get_inertia_tensor_world(struct RigidBody* rigid_body) {
-  return mat3_inverse(rigid_body->inverse_inertia_tensor_world);
+  return rigid_body->inverse_inertia_tensor_world;  //mat3_inverse(rigid_body->inverse_inertia_tensor_world);
 }
 
 void rigid_body_set_damping(struct RigidBody* rigid_body, float linear_damping, float angular_damping) {

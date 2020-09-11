@@ -56,7 +56,20 @@ void contact_calculate_contact_basis(struct Contact* contact) {
     contact_tangent[1].data[1] = -contact_normal.data[0] * contact_tangent[0].data[2];
     contact_tangent[1].data[2] = contact_normal.data[0] * contact_tangent[0].data[1];
   }
-  contact->contact_to_world = (mat3){.m00 = contact_normal.data[0], .m01 = contact_normal.data[1], .m02 = contact_normal.data[2], .m10 = contact_tangent[0].data[0], .m11 = contact_tangent[0].data[1], .m12 = contact_tangent[0].data[2], .m20 = contact_tangent[1].data[0], .m21 = contact_tangent[1].data[1], .m22 = contact_tangent[1].data[2]};
+  contact->contact_to_world = (mat3){
+      .data[0] = contact_normal.data[0],
+      .data[1] = contact_tangent[0].data[0],
+      .data[2] = contact_tangent[1].data[0],
+
+      .data[3] = contact_normal.data[1],
+      .data[4] = contact_tangent[0].data[1],
+      .data[5] = contact_tangent[1].data[1],
+
+      .data[6] = contact_normal.data[2],
+      .data[7] = contact_tangent[0].data[2],
+      .data[8] = contact_tangent[1].data[2],
+  };
+  //contact->contact_to_world = (mat3){.m00 = contact_normal.data[0], .m01 = contact_normal.data[1], .m02 = contact_normal.data[2], .m10 = contact_tangent[0].data[0], .m11 = contact_tangent[0].data[1], .m12 = contact_tangent[0].data[2], .m20 = contact_tangent[1].data[0], .m21 = contact_tangent[1].data[1], .m22 = contact_tangent[1].data[2]};
   //contact->contact_to_world = (mat3){.vecs[0] = contact_normal, .vecs[1] = contact_tangent[0], .vecs[2] = contact_tangent[1]};
 }
 
@@ -72,18 +85,20 @@ vec3 contact_calculate_local_velocity(struct Contact* contact, unsigned int body
   acc_velocity = mat3_transform_transpose(contact->contact_to_world, acc_velocity);
   acc_velocity.data[0] = 0;
 
-  contact_velocity = vec3_add(contact_velocity, acc_velocity);
-  return (vec3){.data[0] = contact_velocity.data[0], .data[1] = contact_velocity.data[1], .data[2] = contact_velocity.data[2]};
+  return vec3_add(contact_velocity, acc_velocity);
+  //contact_velocity = vec3_add(contact_velocity, acc_velocity);
+  //return (vec3){.data[0] = contact_velocity.data[0], .data[1] = contact_velocity.data[1], .data[2] = contact_velocity.data[2]};
 }
 
 void contact_calculate_desired_delta_velocity(struct Contact* contact, float duration) {
   float velocity_from_acc = 0;
 
   if (contact->body[0]->is_awake)
-    velocity_from_acc += vec3_magnitude(vec3_component_product(vec3_scale(contact->body[0]->last_frame_acceleration, duration), contact->contact_normal));
+    velocity_from_acc += vec3_dot(vec3_scale(contact->body[0]->last_frame_acceleration, duration), contact->contact_normal);
+  //velocity_from_acc += vec3_magnitude(vec3_component_product(vec3_scale(contact->body[0]->last_frame_acceleration, duration), contact->contact_normal));
 
   if (contact->body[1] && contact->body[1]->is_awake)
-    velocity_from_acc -= vec3_magnitude(vec3_component_product(vec3_scale(contact->body[1]->last_frame_acceleration, duration), contact->contact_normal));
+    velocity_from_acc -= vec3_dot(vec3_scale(contact->body[1]->last_frame_acceleration, duration), contact->contact_normal);
 
   float this_restitution = contact->restitution;
   if (fabsf(contact->contact_velocity.data[0]) < VELOCITY_LIMIT)
@@ -127,7 +142,6 @@ void contact_apply_velocity_change(struct Contact* contact, vec3 velocity_change
 
   rotation_change[0] = mat3_transform(inverse_inertia_tensor[0], impulsive_torque);
   velocity_change[0] = VEC3_ZERO;
-
   velocity_change[0] = vec3_add_scaled_vector(velocity_change[0], impulse, contact->body[0]->inverse_mass);
 
   rigid_body_add_velocity(contact->body[0], velocity_change[0]);
@@ -211,7 +225,8 @@ vec3 contact_calculate_friction_impulse(struct Contact* contact, mat3 inverse_in
     impulse_contact.data[1] *= contact->friction * impulse_contact.data[0];
     impulse_contact.data[2] *= contact->friction * impulse_contact.data[0];
   }
-  return (vec3){.data[0] = impulse_contact.data[0], .data[1] = impulse_contact.data[1], .data[2] = impulse_contact.data[0]};
+  return impulse_contact;
+  //return (vec3){.data[0] = impulse_contact.data[0], .data[1] = impulse_contact.data[1], .data[2] = impulse_contact.data[0]};
 }
 
 void contact_apply_position_change(struct Contact* contact, vec3 linear_change[2], vec3 angular_change[2], float penetration) {
@@ -231,7 +246,7 @@ void contact_apply_position_change(struct Contact* contact, vec3 linear_change[2
       angular_inertia_world = mat3_transform(inverse_inertia_tensor, angular_inertia_world);
       angular_inertia_world = vec3_cross_product(angular_inertia_world, contact->relative_contact_position[i]);
 
-      angular_inertia[i] = vec3_magnitude(vec3_component_product(angular_inertia_world, contact->contact_normal));
+      angular_inertia[i] = vec3_dot(angular_inertia_world, contact->contact_normal);
       linear_inertia[i] = contact->body[i]->inverse_mass;
       total_inertia += linear_inertia[i] + angular_inertia[i];
     }
@@ -269,10 +284,7 @@ void contact_apply_position_change(struct Contact* contact, vec3 linear_change[2
 
       contact->body[i]->position = vec3_add_scaled_vector(contact->body[i]->position, contact->contact_normal, linear_move[i]);
 
-      quat q;
-      q = contact->body[i]->orientation;
-      quaternion_add_scaled_vector(q, angular_change[i], 1.0f);
-      rigid_body_set_orientation(contact->body[i], q);
+      rigid_body_set_orientation(contact->body[i], quaternion_add_scaled_vector(contact->body[i]->orientation, angular_change[i], 1.0f));
 
       if (!contact->body[i]->is_awake)
         rigid_body_calculate_derived_data(contact->body[i]);

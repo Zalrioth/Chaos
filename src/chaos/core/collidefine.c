@@ -315,7 +315,7 @@ unsigned int collision_detector_box_and_half_space(struct CollisionBox* box, str
     vertex_pos = vec3_component_product(vertex_pos, box->half_size);
     vertex_pos = mat4_transform(box->collision_primitive.transform, vertex_pos);
 
-    float vertex_distance = vec3_magnitude(vec3_component_product(vertex_pos, plane->direction));
+    float vertex_distance = vec3_dot(vertex_pos, plane->direction);
 
     if (vertex_distance <= plane->offset) {
       contact->contact_point = plane->direction;

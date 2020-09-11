@@ -28,8 +28,8 @@ struct RigidBody {
   vec3 last_frame_acceleration;
 };
 
-void rigid_body_transform_inertia_tensor(mat3 iit_world, quat q, mat3 iit_body, mat4 rotmat);
-void rigid_body_calculate_transform_matrix(mat4 transform_matrix, vec3 position, quat orientation);
+mat3 rigid_body_transform_inertia_tensor(mat3 iit_body, mat4 rotmat);
+mat4 rigid_body_calculate_transform_matrix(vec3 position, quat orientation);
 void rigid_body_calculate_derived_data(struct RigidBody* rigid_body);
 void rigid_body_integrate(struct RigidBody* rigid_body, float duration);
 void rigid_body_set_mass(struct RigidBody* rigid_body, float mass);
