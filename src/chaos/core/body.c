@@ -46,7 +46,7 @@ mat4 rigid_body_calculate_transform_matrix(vec3 position, quat orientation) {
 }
 
 void rigid_body_calculate_derived_data(struct RigidBody* rigid_body) {
-  quaternion_normalise(rigid_body->orientation);
+  rigid_body->orientation = quaternion_normalise(rigid_body->orientation);
   rigid_body->transform_matrix = rigid_body_calculate_transform_matrix(rigid_body->position, rigid_body->orientation);
   rigid_body->inverse_inertia_tensor_world = rigid_body_transform_inertia_tensor(rigid_body->inverse_inertia_tensor, rigid_body->transform_matrix);
 }
@@ -111,10 +111,6 @@ mat3 rigid_body_get_inertia_tensor(struct RigidBody* rigid_body) {
   return mat3_inverse(rigid_body->inverse_inertia_tensor);
 }
 
-mat3 rigid_body_get_inertia_tensor_world(struct RigidBody* rigid_body) {
-  return rigid_body->inverse_inertia_tensor_world;  //mat3_inverse(rigid_body->inverse_inertia_tensor_world);
-}
-
 void rigid_body_set_damping(struct RigidBody* rigid_body, float linear_damping, float angular_damping) {
   rigid_body->linear_damping = linear_damping;
   rigid_body->angular_damping = angular_damping;
@@ -124,10 +120,6 @@ void rigid_body_set_position_xyz(struct RigidBody* rigid_body, float x, float y,
   rigid_body->position.x = x;
   rigid_body->position.y = y;
   rigid_body->position.z = z;
-}
-
-void rigid_body_set_orientation(struct RigidBody* rigid_body, quat orientation) {
-  rigid_body->orientation = quaternion_normalise(orientation);
 }
 
 void rigid_body_set_orientation_rijk(struct RigidBody* rigid_body, float r, float i, float j, float k) {

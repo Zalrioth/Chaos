@@ -35,7 +35,8 @@ void contact_calculate_contact_basis(struct Contact* contact) {
 
   vec3 contact_normal = contact->contact_normal;
 
-  if (sqrtf(contact_normal.data[0]) > sqrtf(contact_normal.data[1])) {
+  //if (sqrtf(contact_normal.data[0]) > sqrtf(contact_normal.data[1])) {
+  if (fabs(contact_normal.data[0]) > fabs(contact_normal.data[1])) {
     const float s = 1.0f / sqrtf(contact_normal.data[2] * contact_normal.data[2] + contact_normal.data[0] * contact_normal.data[0]);
 
     contact_tangent[0].data[0] = contact_normal.data[2] * s;
@@ -192,9 +193,9 @@ vec3 contact_calculate_friction_impulse(struct Contact* contact, mat3 inverse_in
     impulse_to_torque = mat3_skew_symmetric(impulse_to_torque, contact->relative_contact_position[1]);
 
     mat3 delta_vel_world_other = impulse_to_torque;
-    delta_vel_world_other = mat3_mul_mat3(delta_vel_world, inverse_inertia_tensor[1]);
-    delta_vel_world_other = mat3_mul_mat3(delta_vel_world, impulse_to_torque);
-    delta_vel_world_other = mat3_mul_scalar(delta_vel_world, -1);
+    delta_vel_world_other = mat3_mul_mat3(delta_vel_world_other, inverse_inertia_tensor[1]);
+    delta_vel_world_other = mat3_mul_mat3(delta_vel_world_other, impulse_to_torque);
+    delta_vel_world_other = mat3_mul_scalar(delta_vel_world_other, -1);
 
     delta_vel_world = mat3_add_mat3(delta_vel_world, delta_vel_world_other);
 
@@ -263,28 +264,27 @@ void contact_apply_position_change(struct Contact* contact, vec3 linear_change[2
       float max_magnitude = angular_limit * vec3_magnitude(projection);
 
       if (angular_move[i] < -max_magnitude) {
-        float totalMove = angular_move[i] + linear_move[i];
+        float total_move = angular_move[i] + linear_move[i];
         angular_move[i] = -max_magnitude;
-        linear_move[i] = totalMove - angular_move[i];
+        linear_move[i] = total_move - angular_move[i];
       } else if (angular_move[i] > max_magnitude) {
-        float totalMove = angular_move[i] + linear_move[i];
+        float total_move = angular_move[i] + linear_move[i];
         angular_move[i] = max_magnitude;
-        linear_move[i] = totalMove - angular_move[i];
+        linear_move[i] = total_move - angular_move[i];
       }
 
       if (angular_move[i] == 0)
         angular_change[i] = VEC3_ZERO;
       else {
         vec3 target_angular_direction = vec3_cross_product(contact->relative_contact_position[i], contact->contact_normal);
-        mat3 inverse_inertia_tensor = rigid_body_get_inertia_tensor_world(contact->body[i]);
+        mat3 inverse_inertia_tensor = contact->body[i]->inverse_inertia_tensor_world;
         angular_change[i] = vec3_scale(mat3_transform(inverse_inertia_tensor, target_angular_direction), (angular_move[i] / angular_inertia[i]));
       }
 
       linear_change[i] = vec3_scale(contact->contact_normal, linear_move[i]);
 
       contact->body[i]->position = vec3_add_scaled_vector(contact->body[i]->position, contact->contact_normal, linear_move[i]);
-
-      rigid_body_set_orientation(contact->body[i], quaternion_add_scaled_vector(contact->body[i]->orientation, angular_change[i], 1.0f));
+      contact->body[i]->orientation = quaternion_normalise(quaternion_add_scaled_vector(contact->body[i]->orientation, angular_change[i], 1.0f));
 
       if (!contact->body[i]->is_awake)
         rigid_body_calculate_derived_data(contact->body[i]);
@@ -332,7 +332,6 @@ void contact_resolver_prepare_contacts(struct ContactResolver* contact_resolver,
 
 void contact_resolver_adjust_velocities(struct ContactResolver* contact_resolver, struct Contact* contact, unsigned int num_contacts, float duration) {
   vec3 velocity_change[2], rotation_change[2];
-  vec3 delta_vel;
 
   contact_resolver->velocity_iterations_used = 0;
   while (contact_resolver->velocity_iterations_used < contact_resolver->velocity_iterations) {
@@ -355,7 +354,7 @@ void contact_resolver_adjust_velocities(struct ContactResolver* contact_resolver
         if (contact[i].body[b]) {
           for (unsigned int d = 0; d < 2; d++) {
             if (contact[i].body[b] == contact[index].body[d]) {
-              delta_vel = vec3_add(velocity_change[d], vec3_cross_product(rotation_change[d], contact[i].relative_contact_position[b]));
+              vec3 delta_vel = vec3_add(velocity_change[d], vec3_cross_product(rotation_change[d], contact[i].relative_contact_position[b]));
               contact[i].contact_velocity = vec3_add(contact[i].contact_velocity, vec3_scale(mat3_transform_transpose(contact[i].contact_to_world, delta_vel), (b ? -1 : 1)));
               contact_calculate_desired_delta_velocity(&contact[i], duration);
             }
